@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.wavedash.com)",
+      "Read(//Users/cquinterom096/.claude/skills/**)",
+      "Read(//Users/cquinterom096/.claude/skills/godot-ui/**)",
+      "Read(//Users/cquinterom096/.agents/skills/godot-ui/**)",
+      "Edit(~/.claude/skills/wavedash/**)",
+      "Bash(xargs -I {} python3 -c \"from PIL import Image; img = Image.open\\('{}'\\); print\\('{}', img.size\\)\")",
+      "Bash(xargs -I {} python3 -c \"import sys; from PIL import Image; img = Image.open\\(sys.argv[1]\\); print\\(sys.argv[1], img.size\\)\")"
+    ],
+    "additionalDirectories": [
+      "/Users/cquinterom096/.claude/skills"
+    ]
+  }
+}
