@@ -3,226 +3,29 @@
   "meta": {
     "tileSize": 8,
     "palette": "NES",
-    "packs": ["reactor_man", "glacier_man"],
-    "note": "All paths are relative to the public/ web root. frameWidth/frameHeight are measured pixel dimensions — verify animated tile frame counts against GIF sources before shipping."
+    "packs": [
+      "reactor_man",
+      "glacier_man",
+      "castle"
+    ],
+    "note": "All paths are relative to the public/ web root. frameWidth/frameHeight are measured pixel dimensions \u2014 verify animated tile frame counts against GIF sources before shipping."
   },
-
   "reactor_man": {
-    "tilesets": {
-      "reactor_man_tileset": {
-        "key": "reactor_man_tileset",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Reactor_Man_Tileset.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 280,
-        "imageHeight": 248,
-        "cols": 35,
-        "rows": 31
-      },
-      "reactor_man_tileset_palette2": {
-        "key": "reactor_man_tileset_palette2",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Reactor_Man_Tileset_Palette_2.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 280,
-        "imageHeight": 248,
-        "cols": 35,
-        "rows": 31
-      },
-      "reactor_man_tileset_condensed": {
-        "key": "reactor_man_tileset_condensed",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Condensed_Tilesets/Reactor_Man_Tileset_Condensed.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 168,
-        "imageHeight": 160,
-        "cols": 21,
-        "rows": 20
-      },
-      "reactor_man_tileset_condensed_palette2": {
-        "key": "reactor_man_tileset_condensed_palette2",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Condensed_Tilesets/Reactor_Man_Tileset_Condensed_Palette_2.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 168,
-        "imageHeight": 160,
-        "cols": 21,
-        "rows": 20
-      },
-      "reactor_man_bonus_tiles_palette1": {
-        "key": "reactor_man_bonus_tiles_palette1",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Bonus_Tilesets/Reactor_Man_Bonus_Tiles_Palette_1.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 512,
-        "imageHeight": 232,
-        "cols": 64,
-        "rows": 29
-      },
-      "reactor_man_bonus_tiles_palette2": {
-        "key": "reactor_man_bonus_tiles_palette2",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Bonus_Tilesets/Reactor_Man_Bonus_Tiles_Palette_2.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 512,
-        "imageHeight": 232,
-        "cols": 64,
-        "rows": 29
-      },
-      "reactor_man_bonus_tiles_palette3": {
-        "key": "reactor_man_bonus_tiles_palette3",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Bonus_Tilesets/Reactor_Man_Bonus_Tiles_Palette_3.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 512,
-        "imageHeight": 232,
-        "cols": 64,
-        "rows": 29
-      },
-      "reactor_man_bonus_tiles_palette4": {
-        "key": "reactor_man_bonus_tiles_palette4",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Bonus_Tilesets/Reactor_Man_Bonus_Tiles_Palette_4.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 512,
-        "imageHeight": 232,
-        "cols": 64,
-        "rows": 29
-      },
-      "reactor_man_stage_select_tileset": {
-        "key": "reactor_man_stage_select_tileset",
-        "path": "assets/Reactor_Man_Asset_Pack/Stage_Select_Assets/Tilesets/Stage_Select_Tileset.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 56,
-        "imageHeight": 48,
-        "cols": 7,
-        "rows": 6
-      },
-      "reactor_man_boss_reveal_tileset": {
-        "key": "reactor_man_boss_reveal_tileset",
-        "path": "assets/Reactor_Man_Asset_Pack/Stage_Select_Assets/Tilesets/Boss_Reveal_Tileset.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 128,
-        "imageHeight": 48,
-        "cols": 16,
-        "rows": 6
-      }
-    },
-
-    "animated_tiles": {
-      "dripping_toxic_goop": {
-        "key": "dripping_toxic_goop",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Dripping_Toxic_Goop.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 16,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "reactor_cloud_bottom": {
-        "key": "reactor_cloud_bottom",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Reactor_Cloud_Bottom.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 4,
-        "imageWidth": 32,
-        "imageHeight": 8,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "reactor_cloud_left_corner": {
-        "key": "reactor_cloud_left_corner",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Reactor_Cloud_Left_Corner.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 4,
-        "imageWidth": 32,
-        "imageHeight": 8,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "reactor_cloud_right_corner": {
-        "key": "reactor_cloud_right_corner",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Reactor_Cloud_Right_Corner.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 4,
-        "imageWidth": 32,
-        "imageHeight": 8,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "reactor_cloud_top_left_corner": {
-        "key": "reactor_cloud_top_left_corner",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Reactor_Cloud_Top_Left_Corner.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 4,
-        "imageWidth": 32,
-        "imageHeight": 8,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "toxic_water": {
-        "key": "toxic_water",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Toxic_Water.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 8,
-        "imageWidth": 64,
-        "imageHeight": 8,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "toxic_waterfall": {
-        "key": "toxic_waterfall",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Toxic_Waterfall.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 8,
-        "imageWidth": 64,
-        "imageHeight": 8,
-        "frameRate": 8,
-        "repeat": -1
-      }
-    },
-
     "player": {
       "player_default": {
         "key": "player_default",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Character_Default_Colors.png",
+        "path": "assets/player/Playable_Character_Default_Colors.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 48,
         "frameCount": 50,
         "imageWidth": 1200,
         "imageHeight": 48,
-        "note": "Animation ranges require visual inspection to define — open in an image editor to map idle/run/jump/shoot frame groups"
+        "note": "Animation ranges require visual inspection to define \u2014 open in an image editor to map idle/run/jump/shoot frame groups"
       },
       "player_reactor_colors": {
         "key": "player_reactor_colors",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Character_Reactor_Man_Colors.png",
+        "path": "assets/player/Playable_Character_Reactor_Man_Colors.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 48,
@@ -232,14 +35,14 @@
       },
       "projectile_small": {
         "key": "projectile_small",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Projectile_Small.png",
+        "path": "assets/player/Playable_Projectile_Small.png",
         "type": "image",
         "imageWidth": 16,
         "imageHeight": 16
       },
       "projectile_charged": {
         "key": "projectile_charged",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Projectile_Charged.png",
+        "path": "assets/player/Playable_Projectile_Charged.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -249,7 +52,7 @@
       },
       "projectile_full_charge": {
         "key": "projectile_full_charge",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Projectile_Full_Charge.png",
+        "path": "assets/player/Playable_Projectile_Full_Charge.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -258,11 +61,10 @@
         "imageHeight": 16
       }
     },
-
     "enemies": {
       "all_terrain_missile_bot": {
         "key": "all_terrain_missile_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/All_Terrain_Missile_Bot.png",
+        "path": "assets/reactor_man_enemies/All_Terrain_Missile_Bot.png",
         "type": "spritesheet",
         "frameWidth": 48,
         "frameHeight": 40,
@@ -272,7 +74,7 @@
       },
       "baby_propeller_bot": {
         "key": "baby_propeller_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Baby_Propeller_Bot.png",
+        "path": "assets/reactor_man_enemies/Baby_Propeller_Bot.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 24,
@@ -282,7 +84,7 @@
       },
       "big_propeller_bot": {
         "key": "big_propeller_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Big_Propeller_Bot.png",
+        "path": "assets/reactor_man_enemies/Big_Propeller_Bot.png",
         "type": "spritesheet",
         "frameWidth": 48,
         "frameHeight": 40,
@@ -292,7 +94,7 @@
       },
       "roller_bot": {
         "key": "roller_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Roller_Bot.png",
+        "path": "assets/reactor_man_enemies/Roller_Bot.png",
         "type": "spritesheet",
         "frameWidth": 48,
         "frameHeight": 40,
@@ -302,7 +104,7 @@
       },
       "toxic_barrel_bot": {
         "key": "toxic_barrel_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Toxic_Barrel_Bot.png",
+        "path": "assets/reactor_man_enemies/Toxic_Barrel_Bot.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 48,
@@ -312,7 +114,7 @@
       },
       "toxic_barrel_bot_no_barrel": {
         "key": "toxic_barrel_bot_no_barrel",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Toxic_Barrel_Bot_no_Barrel.png",
+        "path": "assets/reactor_man_enemies/Toxic_Barrel_Bot_no_Barrel.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 24,
@@ -322,7 +124,7 @@
       },
       "ufo_bomb_bot": {
         "key": "ufo_bomb_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/UFO_Bomb_Bot.png",
+        "path": "assets/reactor_man_enemies/UFO_Bomb_Bot.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 32,
@@ -332,7 +134,7 @@
       },
       "uf_oh_no_bot": {
         "key": "uf_oh_no_bot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/UF_Oh_No_Bot.png",
+        "path": "assets/reactor_man_enemies/UF_Oh_No_Bot.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -342,7 +144,7 @@
       },
       "uf_oh_no_bot_crane_closed": {
         "key": "uf_oh_no_bot_crane_closed",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/UF_Oh_No_Bot_Crane_Closed.png",
+        "path": "assets/reactor_man_enemies/UF_Oh_No_Bot_Crane_Closed.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -352,7 +154,7 @@
       },
       "uf_oh_no_bot_crane_open": {
         "key": "uf_oh_no_bot_crane_open",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/UF_Oh_No_Bot_Crane_Open.png",
+        "path": "assets/reactor_man_enemies/UF_Oh_No_Bot_Crane_Open.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -362,7 +164,7 @@
       },
       "multi_directional_cannon": {
         "key": "multi_directional_cannon",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Multi_Directional_Cannon.png",
+        "path": "assets/reactor_man_enemies/Multi_Directional_Cannon.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -371,25 +173,24 @@
         "imageHeight": 40
       }
     },
-
     "projectiles": {
       "cannon_ball": {
         "key": "cannon_ball",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Cannon_Ball.png",
+        "path": "assets/reactor_man_enemies/Cannon_Ball.png",
         "type": "image",
         "imageWidth": 16,
         "imageHeight": 16
       },
       "propeller_bot_bullet": {
         "key": "propeller_bot_bullet",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Propeller_Bot_Bullet.png",
+        "path": "assets/reactor_man_enemies/Propeller_Bot_Bullet.png",
         "type": "image",
         "imageWidth": 16,
         "imageHeight": 8
       },
       "roller_bot_bullet": {
         "key": "roller_bot_bullet",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Roller_Bot_Bullet.png",
+        "path": "assets/reactor_man_enemies/Roller_Bot_Bullet.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 8,
@@ -399,7 +200,7 @@
       },
       "toxic_goop_shot": {
         "key": "toxic_goop_shot",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Toxic_Goop_Shot.png",
+        "path": "assets/reactor_man_enemies/Toxic_Goop_Shot.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -409,7 +210,7 @@
       },
       "ufo_bomb": {
         "key": "ufo_bomb",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/UFO_Bomb.png",
+        "path": "assets/reactor_man_enemies/UFO_Bomb.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -419,7 +220,7 @@
       },
       "yellow_missile": {
         "key": "yellow_missile",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Yellow_Missile.png",
+        "path": "assets/reactor_man_enemies/Yellow_Missile.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -428,11 +229,10 @@
         "imageHeight": 16
       }
     },
-
     "bosses": {
       "reactor_man_boss": {
         "key": "reactor_man_boss",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Reactor_Man_Boss.png",
+        "path": "assets/reactor_man_enemies/Reactor_Man_Boss/Reactor_Man_Boss.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
@@ -442,7 +242,7 @@
       },
       "reactor_man_boss_intro": {
         "key": "reactor_man_boss_intro",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Reactor_Man_Boss_Intro_Animation.png",
+        "path": "assets/reactor_man_enemies/Reactor_Man_Boss/Reactor_Man_Boss_Intro_Animation.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
@@ -452,30 +252,30 @@
       },
       "reactor_man_boss_large": {
         "key": "reactor_man_boss_large",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Large_Version/Reactor_Man_Boss.png",
+        "path": "assets/reactor_man_enemies/Reactor_Man_Boss/Large_Version/Reactor_Man_Boss.png",
         "type": "image",
         "imageWidth": 264,
         "imageHeight": 49,
-        "note": "Non-standard dimensions — likely a cutscene/reference asset, not a uniform spritesheet"
+        "note": "Non-standard dimensions \u2014 likely a cutscene/reference asset, not a uniform spritesheet"
       },
       "reactor_man_boss_large_intro": {
         "key": "reactor_man_boss_large_intro",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Large_Version/Reactor_Man_Boss_Intro_Animation.png",
+        "path": "assets/reactor_man_enemies/Reactor_Man_Boss/Large_Version/Reactor_Man_Boss_Intro_Animation.png",
         "type": "image",
         "imageWidth": 148,
         "imageHeight": 42,
-        "note": "Non-standard dimensions — likely a cutscene/reference asset, not a uniform spritesheet"
+        "note": "Non-standard dimensions \u2014 likely a cutscene/reference asset, not a uniform spritesheet"
       },
       "reactor_man_boss_portrait": {
         "key": "reactor_man_boss_portrait",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Reactor_Man_Stage_Select_Portrait.png",
+        "path": "assets/reactor_man_enemies/Reactor_Man_Boss/Reactor_Man_Stage_Select_Portrait.png",
         "type": "image",
         "imageWidth": 32,
         "imageHeight": 32
       },
       "reactor_man_projectile": {
         "key": "reactor_man_projectile",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Reactor_Man_Projectile.png",
+        "path": "assets/reactor_man_enemies/Reactor_Man_Boss/Reactor_Man_Projectile.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -485,356 +285,97 @@
       },
       "nuclear_monkey_boss": {
         "key": "nuclear_monkey_boss",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Nuclear_Monkey_Boss.png",
+        "path": "assets/reactor_man_enemies/Monkey_Boss/Nuclear_Monkey_Boss.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
         "frameCount": 76,
-        "spriteGrid": { "cols": 19, "rows": 4 },
+        "spriteGrid": {
+          "cols": 19,
+          "rows": 4
+        },
         "imageWidth": 608,
         "imageHeight": 160,
-        "note": "Multi-row sheet — use anims.create with start/end frame indices after visual inspection"
+        "note": "Multi-row sheet \u2014 use anims.create with start/end frame indices after visual inspection"
       },
       "nuclear_monkey_boss_foreground": {
         "key": "nuclear_monkey_boss_foreground",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Nuclear_Monkey_Boss_Foreground.png",
+        "path": "assets/reactor_man_enemies/Monkey_Boss/Nuclear_Monkey_Boss_Foreground.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
         "frameCount": 76,
-        "spriteGrid": { "cols": 19, "rows": 4 },
+        "spriteGrid": {
+          "cols": 19,
+          "rows": 4
+        },
         "imageWidth": 608,
         "imageHeight": 160,
-        "note": "Foreground layer — render above nuclear_monkey_boss at same position"
+        "note": "Foreground layer \u2014 render above nuclear_monkey_boss at same position"
       },
       "nuclear_monkey_boss_with_monkey_ball": {
         "key": "nuclear_monkey_boss_with_monkey_ball",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Nuclear_Monkey_Boss_With_Monkey_Ball.png",
+        "path": "assets/reactor_man_enemies/Monkey_Boss/Nuclear_Monkey_Boss_With_Monkey_Ball.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
         "frameCount": 76,
-        "spriteGrid": { "cols": 19, "rows": 4 },
+        "spriteGrid": {
+          "cols": 19,
+          "rows": 4
+        },
         "imageWidth": 608,
         "imageHeight": 160
       },
       "nuclear_monkey_boss_with_nuclear_ball": {
         "key": "nuclear_monkey_boss_with_nuclear_ball",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Nuclear_Monkey_Boss_With_Nuclear_Ball.png",
+        "path": "assets/reactor_man_enemies/Monkey_Boss/Nuclear_Monkey_Boss_With_Nuclear_Ball.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
         "frameCount": 76,
-        "spriteGrid": { "cols": 19, "rows": 4 },
+        "spriteGrid": {
+          "cols": 19,
+          "rows": 4
+        },
         "imageWidth": 608,
         "imageHeight": 160
       },
       "monkey_ball": {
         "key": "monkey_ball",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Monkey_Ball.png",
+        "path": "assets/reactor_man_enemies/Monkey_Boss/Monkey_Ball.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 32,
         "frameCount": 4,
-        "spriteGrid": { "cols": 2, "rows": 2 },
+        "spriteGrid": {
+          "cols": 2,
+          "rows": 2
+        },
         "imageWidth": 64,
         "imageHeight": 64
       },
       "nuclear_monkey_ball": {
         "key": "nuclear_monkey_ball",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Nuclear_Monkey_Ball.png",
+        "path": "assets/reactor_man_enemies/Monkey_Boss/Nuclear_Monkey_Ball.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 32,
         "frameCount": 4,
-        "spriteGrid": { "cols": 2, "rows": 2 },
+        "spriteGrid": {
+          "cols": 2,
+          "rows": 2
+        },
         "imageWidth": 64,
         "imageHeight": 64
       }
-    },
-
-    "hazards": {
-      "stage_laser": {
-        "key": "stage_laser",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Stage_Hazards/PNG/Stage_Laser_Projectile.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 2,
-        "imageWidth": 32,
-        "imageHeight": 16
-      },
-      "stage_laser_variation": {
-        "key": "stage_laser_variation",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Stage_Hazards/PNG/Stage_Laser_Projectile_Variation.png",
-        "type": "image",
-        "imageWidth": 16,
-        "imageHeight": 16
-      },
-      "toxic_goop_drip": {
-        "key": "toxic_goop_drip",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Stage_Hazards/PNG/Toxic_Goop_Drip.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 10,
-        "imageWidth": 160,
-        "imageHeight": 16
-      },
-      "toxic_goop_splash": {
-        "key": "toxic_goop_splash",
-        "path": "assets/Reactor_Man_Asset_Pack/Reactor_Man_Stage_Hazards/PNG/Toxic_Goop_Splash.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 6,
-        "imageWidth": 96,
-        "imageHeight": 16
-      }
-    },
-
-    "stage_select": {
-      "stage_select_frame_animation": {
-        "key": "stage_select_frame_animation",
-        "path": "assets/Reactor_Man_Asset_Pack/Stage_Select_Assets/Stage_Select_Frame_Animation.png",
-        "type": "spritesheet",
-        "frameWidth": 48,
-        "frameHeight": 48,
-        "frameCount": 4,
-        "imageWidth": 192,
-        "imageHeight": 48,
-        "frameRate": 6,
-        "repeat": -1
-      }
     }
   },
-
   "glacier_man": {
-    "tilesets": {
-      "glacier_man_tileset": {
-        "key": "glacier_man_tileset",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Glacier_Man_Tileset.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 424,
-        "imageHeight": 256,
-        "cols": 53,
-        "rows": 32
-      },
-      "glacier_man_tileset_condensed": {
-        "key": "glacier_man_tileset_condensed",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Condensed_Tilesets/Glacier_Man_Tileset_Condensed.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 280,
-        "imageHeight": 264,
-        "cols": 35,
-        "rows": 33
-      },
-      "glacier_man_bonus_tiles": {
-        "key": "glacier_man_bonus_tiles",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Bonus_Tilesets/Glacier_Man_Bonus_Tiles.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 464,
-        "imageHeight": 296,
-        "cols": 58,
-        "rows": 37
-      },
-      "glacier_man_stage_select_tileset": {
-        "key": "glacier_man_stage_select_tileset",
-        "path": "assets/Glacier_Man_Asset_Pack/Stage_Select_Assets/Tilesets/Stage_Select_Tileset.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 56,
-        "imageHeight": 48,
-        "cols": 7,
-        "rows": 6
-      },
-      "glacier_man_boss_reveal_tileset": {
-        "key": "glacier_man_boss_reveal_tileset",
-        "path": "assets/Glacier_Man_Asset_Pack/Stage_Select_Assets/Tilesets/Boss_Reveal_Tileset.png",
-        "type": "tileset",
-        "tileWidth": 8,
-        "tileHeight": 8,
-        "imageWidth": 128,
-        "imageHeight": 48,
-        "cols": 16,
-        "rows": 6
-      }
-    },
-
-    "animated_tiles": {
-      "conveyor_belt_center": {
-        "key": "conveyor_belt_center",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Conveyor_Belt_Center.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 16,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "conveyor_belt_left": {
-        "key": "conveyor_belt_left",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Conveyor_Belt_Left.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 16,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "conveyor_belt_right": {
-        "key": "conveyor_belt_right",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Conveyor_Belt_Right.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 16,
-        "frameRate": 8,
-        "repeat": -1
-      },
-      "fan": {
-        "key": "fan",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Fan.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 20,
-        "imageWidth": 320,
-        "imageHeight": 16,
-        "frameRate": 12,
-        "repeat": -1
-      },
-      "fan_shaft": {
-        "key": "fan_shaft",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Fan_Shaft.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 16,
-        "frameRate": 12,
-        "repeat": -1
-      },
-      "fan_shaft_in_shadow": {
-        "key": "fan_shaft_in_shadow",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Fan_Shaft_In_Shadow.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 16,
-        "frameRate": 12,
-        "repeat": -1
-      },
-      "glacier_ripple_left": {
-        "key": "glacier_ripple_left",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Glacier_Ripple_Left.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 4,
-        "imageWidth": 32,
-        "imageHeight": 8,
-        "frameRate": 6,
-        "repeat": -1
-      },
-      "glacier_ripple_right": {
-        "key": "glacier_ripple_right",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Glacier_Ripple_Right.png",
-        "type": "spritesheet",
-        "frameWidth": 8,
-        "frameHeight": 8,
-        "frameCount": 8,
-        "imageWidth": 64,
-        "imageHeight": 8,
-        "frameRate": 6,
-        "repeat": -1
-      },
-      "water": {
-        "key": "water",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Tileset_Animations/PNG/Water.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 24,
-        "frameCount": 4,
-        "imageWidth": 64,
-        "imageHeight": 24,
-        "frameRate": 6,
-        "repeat": -1
-      }
-    },
-
-    "player": {
-      "player_default": {
-        "key": "player_default",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Player/PNG/Playable_Character_Default_Colors.png",
-        "type": "spritesheet",
-        "frameWidth": 24,
-        "frameHeight": 48,
-        "frameCount": 50,
-        "imageWidth": 1200,
-        "imageHeight": 48,
-        "note": "Identical sheet to Reactor Man default — share the same Phaser key if using one scene"
-      },
-      "player_glacier_upgrade": {
-        "key": "player_glacier_upgrade",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Player/PNG/Playable_Character_Glacier_Man_Upgrade.png",
-        "type": "spritesheet",
-        "frameWidth": 24,
-        "frameHeight": 48,
-        "frameCount": 54,
-        "imageWidth": 1296,
-        "imageHeight": 48,
-        "note": "Jetpack upgrade skin — 4 extra frames over the default"
-      },
-      "projectile_small": {
-        "key": "glacier_projectile_small",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Player/PNG/Playable_Projectile_Small.png",
-        "type": "image",
-        "imageWidth": 16,
-        "imageHeight": 16
-      },
-      "projectile_charged": {
-        "key": "glacier_projectile_charged",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Player/PNG/Playable_Projectile_Charged.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 2,
-        "imageWidth": 32,
-        "imageHeight": 16
-      },
-      "projectile_full_charge": {
-        "key": "glacier_projectile_full_charge",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Player/PNG/Playable_Projectile_Full_Charge.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 2,
-        "imageWidth": 32,
-        "imageHeight": 16
-      }
-    },
-
     "enemies": {
       "jetpack_ice_blaster_bot": {
         "key": "jetpack_ice_blaster_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Jetpack_Ice_Blaster_Bot.png",
+        "path": "assets/glacier_man_enemies/Jetpack_Ice_Blaster_Bot.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -844,7 +385,7 @@
       },
       "jetpack_ice_blaster_bot_thrusters_off": {
         "key": "jetpack_ice_blaster_bot_thrusters_off",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Jetpack_Ice_Blaster_Bot_Thrusters_Off.png",
+        "path": "assets/glacier_man_enemies/Jetpack_Ice_Blaster_Bot_Thrusters_Off.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -854,7 +395,7 @@
       },
       "ladder_guard_bot": {
         "key": "ladder_guard_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Ladder_Guard_Bot.png",
+        "path": "assets/glacier_man_enemies/Ladder_Guard_Bot.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 24,
@@ -864,7 +405,7 @@
       },
       "omni_directional_blaster_bot": {
         "key": "omni_directional_blaster_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Omni_Directional_Blaster_Bot.png",
+        "path": "assets/glacier_man_enemies/Omni_Directional_Blaster_Bot.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 24,
@@ -874,7 +415,7 @@
       },
       "penguin_bot": {
         "key": "penguin_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot.png",
+        "path": "assets/glacier_man_enemies/Penguin_Bot.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -884,7 +425,7 @@
       },
       "spike_bot": {
         "key": "spike_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Spike_Bot.png",
+        "path": "assets/glacier_man_enemies/Spike_Bot.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 32,
@@ -894,18 +435,18 @@
       },
       "spike_bot_flipped": {
         "key": "spike_bot_flipped",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Spike_Bot_Flipped.png",
+        "path": "assets/glacier_man_enemies/Spike_Bot_Flipped.png",
         "type": "spritesheet",
         "frameWidth": 24,
         "frameHeight": 32,
         "frameCount": 9,
         "imageWidth": 216,
         "imageHeight": 32,
-        "note": "Pre-flipped variant — alternatively flip spike_bot with setFlipX(true)"
+        "note": "Pre-flipped variant \u2014 alternatively flip spike_bot with setFlipX(true)"
       },
       "underwater_penguin_bot": {
         "key": "underwater_penguin_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Underwater_Penguin_Bot.png",
+        "path": "assets/glacier_man_enemies/Underwater_Penguin_Bot.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -915,7 +456,7 @@
       },
       "walrus_bot": {
         "key": "walrus_bot",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Walrus_Bot.png",
+        "path": "assets/glacier_man_enemies/Walrus_Bot.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 40,
@@ -924,11 +465,10 @@
         "imageHeight": 40
       }
     },
-
     "projectiles": {
       "bubble_trail": {
         "key": "bubble_trail",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Bubble_Trail.png",
+        "path": "assets/glacier_man_enemies/Bubble_Trail.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 8,
@@ -938,7 +478,7 @@
       },
       "jetpack_bot_muzzle_flash": {
         "key": "jetpack_bot_muzzle_flash",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Jetpack_Ice_Blaster_Bot_Muzzle_Flash.png",
+        "path": "assets/glacier_man_enemies/Jetpack_Ice_Blaster_Bot_Muzzle_Flash.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -948,7 +488,7 @@
       },
       "jetpack_bot_projectile": {
         "key": "jetpack_bot_projectile",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Jetpack_Ice_Blaster_Bot_Projectile.png",
+        "path": "assets/glacier_man_enemies/Jetpack_Ice_Blaster_Bot_Projectile.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -958,7 +498,7 @@
       },
       "omni_bot_projectile": {
         "key": "omni_bot_projectile",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Omni_Directional_Blaster_Bot_Projectile.png",
+        "path": "assets/glacier_man_enemies/Omni_Directional_Blaster_Bot_Projectile.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 8,
@@ -968,7 +508,7 @@
       },
       "penguin_bot_bomb": {
         "key": "penguin_bot_bomb",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot_Bomb.png",
+        "path": "assets/glacier_man_enemies/Penguin_Bot_Bomb.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 32,
@@ -978,14 +518,14 @@
       },
       "penguin_bot_shell_1": {
         "key": "penguin_bot_shell_1",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot_Shell_1.png",
+        "path": "assets/glacier_man_enemies/Penguin_Bot_Shell_1.png",
         "type": "image",
         "imageWidth": 8,
         "imageHeight": 8
       },
       "penguin_bot_shell_2": {
         "key": "penguin_bot_shell_2",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot_Shell_2.png",
+        "path": "assets/glacier_man_enemies/Penguin_Bot_Shell_2.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 8,
@@ -995,14 +535,14 @@
       },
       "penguin_bot_shell_3": {
         "key": "penguin_bot_shell_3",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot_Shell_3.png",
+        "path": "assets/glacier_man_enemies/Penguin_Bot_Shell_3.png",
         "type": "image",
         "imageWidth": 8,
         "imageHeight": 8
       },
       "spike_bot_projectile": {
         "key": "spike_bot_projectile",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Spike_Bot_Projectile.png",
+        "path": "assets/glacier_man_enemies/Spike_Bot_Projectile.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 8,
@@ -1012,7 +552,7 @@
       },
       "spike_bot_projectile_flipped": {
         "key": "spike_bot_projectile_flipped",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Spike_Bot_Projectile_Flipped.png",
+        "path": "assets/glacier_man_enemies/Spike_Bot_Projectile_Flipped.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 8,
@@ -1022,7 +562,7 @@
       },
       "walrus_bot_shoot_fx": {
         "key": "walrus_bot_shoot_fx",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Walrus_Bot_Shoot_FX.png",
+        "path": "assets/glacier_man_enemies/Walrus_Bot_Shoot_FX.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 16,
@@ -1032,7 +572,7 @@
       },
       "walrus_bot_snow_ball": {
         "key": "walrus_bot_snow_ball",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Walrus_Bot_Snow_Ball.png",
+        "path": "assets/glacier_man_enemies/Walrus_Bot_Snow_Ball.png",
         "type": "spritesheet",
         "frameWidth": 8,
         "frameHeight": 16,
@@ -1041,22 +581,21 @@
         "imageHeight": 16
       }
     },
-
     "bosses": {
       "glacier_man_boss_all_animations": {
         "key": "glacier_man_boss_all_animations",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Boss_All_Animations.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Boss_All_Animations.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 48,
         "frameCount": 56,
         "imageWidth": 2240,
         "imageHeight": 48,
-        "note": "Full animation bank — use named frame ranges after visual inspection to split into idle/attack/hurt/death groups"
+        "note": "Full animation bank \u2014 use named frame ranges after visual inspection to split into idle/attack/hurt/death groups"
       },
       "glacier_man_boss_dash_attack": {
         "key": "glacier_man_boss_dash_attack",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Boss_Dash_Attack.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Boss_Dash_Attack.png",
         "type": "spritesheet",
         "frameWidth": 48,
         "frameHeight": 40,
@@ -1066,7 +605,7 @@
       },
       "glacier_man_boss_intro": {
         "key": "glacier_man_boss_intro",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Boss_Intro_Animation.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Boss_Intro_Animation.png",
         "type": "spritesheet",
         "frameWidth": 40,
         "frameHeight": 40,
@@ -1076,7 +615,7 @@
       },
       "glacier_man_boss_nose_grab_off": {
         "key": "glacier_man_boss_nose_grab_off",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Boss_Nose_Grab_Attack_Thrusters_Off.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Boss_Nose_Grab_Attack_Thrusters_Off.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 48,
@@ -1086,7 +625,7 @@
       },
       "glacier_man_boss_nose_grab_on": {
         "key": "glacier_man_boss_nose_grab_on",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Boss_Nose_Grab_Attack_Thrusters_On.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Boss_Nose_Grab_Attack_Thrusters_On.png",
         "type": "spritesheet",
         "frameWidth": 32,
         "frameHeight": 48,
@@ -1096,14 +635,14 @@
       },
       "glacier_man_boss_portrait": {
         "key": "glacier_man_boss_portrait",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Stage_Select_Portrait.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Stage_Select_Portrait.png",
         "type": "image",
         "imageWidth": 32,
         "imageHeight": 32
       },
       "glacier_man_whirlwind_projectile": {
         "key": "glacier_man_whirlwind_projectile",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Whirlwind_Projectile.png",
+        "path": "assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Whirlwind_Projectile.png",
         "type": "spritesheet",
         "frameWidth": 16,
         "frameHeight": 16,
@@ -1111,46 +650,10 @@
         "imageWidth": 64,
         "imageHeight": 16
       }
-    },
-
-    "hazards": {
-      "falling_icicle": {
-        "key": "falling_icicle",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Stage_Hazards/PNG/Falling_Icicle.png",
-        "type": "spritesheet",
-        "frameWidth": 16,
-        "frameHeight": 16,
-        "frameCount": 3,
-        "imageWidth": 48,
-        "imageHeight": 16
-      },
-      "ice_block": {
-        "key": "ice_block",
-        "path": "assets/Glacier_Man_Asset_Pack/Glacier_Man_Stage_Hazards/PNG/Ice_Block.png",
-        "type": "image",
-        "imageWidth": 16,
-        "imageHeight": 16
-      }
-    },
-
-    "stage_select": {
-      "stage_select_frame_animation": {
-        "key": "glacier_stage_select_frame_animation",
-        "path": "assets/Glacier_Man_Asset_Pack/Stage_Select_Assets/Stage_Select_Frame_Animation.png",
-        "type": "spritesheet",
-        "frameWidth": 48,
-        "frameHeight": 48,
-        "frameCount": 4,
-        "imageWidth": 192,
-        "imageHeight": 48,
-        "frameRate": 6,
-        "repeat": -1
-      }
     }
   },
-
   "phaser4_loader_snippet": {
-    "_comment": "Reference snippet — copy into your BootScene.preload(). Keys match entries above.",
+    "_comment": "Reference snippet \u2014 copy into your BootScene.preload(). Keys match entries above.",
     "typescript": [
       "// Reactor Man tilesets",
       "this.load.image('reactor_man_tileset', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Reactor_Man_Tileset.png');",
@@ -1163,16 +666,16 @@
       "this.load.spritesheet('reactor_cloud_bottom', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Tiles/Tileset_Animations/PNG/Reactor_Cloud_Bottom.png', { frameWidth: 8, frameHeight: 8 });",
       "",
       "// Reactor Man player",
-      "this.load.spritesheet('player_default', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Character_Default_Colors.png', { frameWidth: 24, frameHeight: 48 });",
-      "this.load.spritesheet('player_reactor_colors', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Character_Reactor_Man_Colors.png', { frameWidth: 24, frameHeight: 48 });",
+      "this.load.spritesheet('player_default', 'assets/player/Playable_Character_Default_Colors.png', { frameWidth: 24, frameHeight: 48 });",
+      "this.load.spritesheet('player_reactor_colors', 'assets/player/Playable_Character_Reactor_Man_Colors.png', { frameWidth: 24, frameHeight: 48 });",
       "",
       "// Reactor Man enemies",
-      "this.load.spritesheet('roller_bot', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Roller_Bot.png', { frameWidth: 48, frameHeight: 40 });",
-      "this.load.spritesheet('ufo_bomb_bot', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/UFO_Bomb_Bot.png', { frameWidth: 32, frameHeight: 32 });",
+      "this.load.spritesheet('roller_bot', 'assets/reactor_man_enemies/Roller_Bot.png', { frameWidth: 48, frameHeight: 40 });",
+      "this.load.spritesheet('ufo_bomb_bot', 'assets/reactor_man_enemies/UFO_Bomb_Bot.png', { frameWidth: 32, frameHeight: 32 });",
       "",
       "// Reactor Man bosses",
-      "this.load.spritesheet('reactor_man_boss', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Reactor_Man_Boss/Reactor_Man_Boss.png', { frameWidth: 32, frameHeight: 40 });",
-      "this.load.spritesheet('nuclear_monkey_boss', 'assets/Reactor_Man_Asset_Pack/Reactor_Man_Enemies/PNG/Monkey_Boss/Nuclear_Monkey_Boss.png', { frameWidth: 32, frameHeight: 40 });",
+      "this.load.spritesheet('reactor_man_boss', 'assets/reactor_man_enemies/Reactor_Man_Boss/Reactor_Man_Boss.png', { frameWidth: 32, frameHeight: 40 });",
+      "this.load.spritesheet('nuclear_monkey_boss', 'assets/reactor_man_enemies/Monkey_Boss/Nuclear_Monkey_Boss.png', { frameWidth: 32, frameHeight: 40 });",
       "",
       "// Glacier Man tilesets",
       "this.load.image('glacier_man_tileset', 'assets/Glacier_Man_Asset_Pack/Glacier_Man_Tiles/Glacier_Man_Tileset.png');",
@@ -1186,11 +689,37 @@
       "this.load.spritesheet('player_glacier_upgrade', 'assets/Glacier_Man_Asset_Pack/Glacier_Man_Player/PNG/Playable_Character_Glacier_Man_Upgrade.png', { frameWidth: 24, frameHeight: 48 });",
       "",
       "// Glacier Man enemies",
-      "this.load.spritesheet('penguin_bot', 'assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot.png', { frameWidth: 40, frameHeight: 40 });",
-      "this.load.spritesheet('walrus_bot', 'assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Walrus_Bot.png', { frameWidth: 32, frameHeight: 40 });",
+      "this.load.spritesheet('penguin_bot', 'assets/glacier_man_enemies/Penguin_Bot.png', { frameWidth: 40, frameHeight: 40 });",
+      "this.load.spritesheet('walrus_bot', 'assets/glacier_man_enemies/Walrus_Bot.png', { frameWidth: 32, frameHeight: 40 });",
       "",
       "// Glacier Man boss",
-      "this.load.spritesheet('glacier_man_boss_all_animations', 'assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Glacier_Man/Glacier_Man_Boss_All_Animations.png', { frameWidth: 40, frameHeight: 48 });"
+      "this.load.spritesheet('glacier_man_boss_all_animations', 'assets/glacier_man_enemies/Glacier_Man/Glacier_Man_Boss_All_Animations.png', { frameWidth: 40, frameHeight: 48 });"
     ]
+  },
+  "castle": {
+    "tilesets": {
+      "castle_tiles": {
+        "key": "castle_tiles",
+        "path": "assets/castle/castle_tiles.png",
+        "type": "tileset",
+        "tileWidth": 16,
+        "tileHeight": 16,
+        "imageWidth": 256,
+        "imageHeight": 144,
+        "cols": 16,
+        "rows": 9,
+        "note": "Row 0-6 = castle pieces, row 7-8 = banner/skull decor. Split from source CastleTiles.png."
+      }
+    },
+    "backgrounds": {
+      "castle_bg": {
+        "key": "castle_bg",
+        "path": "assets/castle/castle_bg.png",
+        "type": "image",
+        "imageWidth": 256,
+        "imageHeight": 192,
+        "note": "Sky + mountain backdrop extracted from the middle of CastleTiles.png."
+      }
+    }
   }
 }

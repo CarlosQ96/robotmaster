@@ -21,8 +21,9 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { label: 'TRAINING GYM', destination: 'GymScene',  available: true  },
-  { label: 'MAIN GAME',    destination: 'GameScene',  available: false },
+  { label: 'TRAINING GYM', destination: 'GymScene',    available: true  },
+  { label: 'MAIN GAME',    destination: 'GameScene',   available: false },
+  { label: 'LEVEL EDITOR', destination: 'EditorScene', available: true  },
 ];
 
 const STYLE_BASE: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -164,6 +165,11 @@ export class TitleScene extends Phaser.Scene {
   private confirm(): void {
     const item = MENU_ITEMS[this.selectedIndex];
     if (!item.available) return;
+    // Editor doesn't need a palette — jump straight in.
+    if (item.destination === 'EditorScene') {
+      this.scene.start('EditorScene');
+      return;
+    }
     this.scene.start('CharacterSelectScene', { destination: item.destination });
   }
 }

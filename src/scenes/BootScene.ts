@@ -46,29 +46,30 @@ export class BootScene extends Phaser.Scene {
     // ── Sprites ───────────────────────────────────────────────────────────
     // Player — default colour palette (source for all canvas-based swaps)
     // Sheet: 1200×48 px | 24×48 per frame | 50 frames
+    // Assets reorganised into flat per-role folders under public/assets/.
     this.load.spritesheet(
       'player_default',
-      'assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Character_Default_Colors.png',
+      'assets/player/Playable_Character_Default_Colors.png',
       { frameWidth: PLAYER.frameWidth, frameHeight: PLAYER.frameHeight },
     );
 
     // Player projectiles
     this.load.image(
       'bullet_small',
-      'assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Projectile_Small.png',
+      'assets/player/Playable_Projectile_Small.png',
     );
 
     // Charged shot — 32×16, 2 frames × 16×16
     this.load.spritesheet(
       'bullet_charged',
-      'assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Projectile_Charged.png',
+      'assets/player/Playable_Projectile_Charged.png',
       { frameWidth: 16, frameHeight: 16 },
     );
 
     // Full-charge shot — 32×16, 2 frames × 16×16
     this.load.spritesheet(
       'bullet_full_charged',
-      'assets/Reactor_Man_Asset_Pack/Reactor_Man_Player/PNG/Playable_Projectile_Full_Charge.png',
+      'assets/player/Playable_Projectile_Full_Charge.png',
       { frameWidth: 16, frameHeight: 16 },
     );
 
@@ -76,16 +77,29 @@ export class BootScene extends Phaser.Scene {
     // Penguin Bot — 480 × 40 px | 12 frames × 40 px
     this.load.spritesheet(
       'penguin_bot',
-      'assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot.png',
+      'assets/glacier_man_enemies/Penguin_Bot.png',
       { frameWidth: PENGUIN_BOT.frameWidth, frameHeight: PENGUIN_BOT.frameHeight },
     );
 
     // Penguin Bomb — 320 × 32 px | 10 frames × 32 px
     this.load.spritesheet(
       'penguin_bot_bomb',
-      'assets/Glacier_Man_Asset_Pack/Glacier_Man_Enemies/PNG/Penguin_Bot_Bomb.png',
+      'assets/glacier_man_enemies/Penguin_Bot_Bomb.png',
       { frameWidth: PENGUIN_BOMB.frameWidth, frameHeight: PENGUIN_BOMB.frameHeight },
     );
+
+    // ── Tilesets + levels ────────────────────────────────────────────────
+    // Castle tileset — 256×144, 16×9 = 144 tiles at 16×16 source.  Split from
+    // CastleTiles.png so the sky/mountain backdrop ships separately as
+    // `castle_bg` (see below).  Loaded as a SPRITESHEET so per-tile frames
+    // exist for the editor palette; Tilemap.addTilesetImage uses the same
+    // underlying texture.
+    this.load.spritesheet('castle_tiles', 'assets/castle/castle_tiles.png', {
+      frameWidth:  16,
+      frameHeight: 16,
+    });
+    this.load.image('castle_bg', 'assets/castle/castle_bg.png');
+    this.load.json('level-gym', 'levels/gym.json');
   }
 
   create(): void {

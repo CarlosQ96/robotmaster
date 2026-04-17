@@ -11,6 +11,7 @@ import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { CharacterSelectScene } from './scenes/CharacterSelectScene';
 import { GymScene } from './scenes/GymScene';
+import { EditorScene } from './scenes/EditorScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,           // WebGL-first — Phaser 4 default
@@ -41,7 +42,7 @@ const config: Phaser.Types.Core.GameConfig = {
     },
   },
 
-  scene: [BootScene, TitleScene, CharacterSelectScene, GymScene],
+  scene: [BootScene, TitleScene, CharacterSelectScene, GymScene, EditorScene],
 };
 
 new Phaser.Game(config);
