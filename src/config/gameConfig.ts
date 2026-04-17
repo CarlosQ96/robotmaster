@@ -107,8 +107,15 @@ export const PLAYER = {
   jumpVelocity: -480,
 
   maxHealth: 5,
-  hurtKnockbackX: 160,
-  hurtKnockbackY: -220,
+
+  /**
+   * Hurt knockback (px/s).  Kept small + short so the impulse can't combine
+   * with gravity to tunnel through the 16-px-thick platform bodies in GymScene.
+   * At 60fps with a 100-ms take_damage lock, max travel is ~14 px horizontal
+   * and ~13 px vertical — well inside a single platform's physics body.
+   */
+  hurtKnockbackX: 100,
+  hurtKnockbackY: -140,
   invulnMs: 1000,
 } as const;
 

@@ -64,6 +64,24 @@ export type PlayerState =
 /** States that use the reduced-height crouch hitbox */
 const LOW_STATES = new Set<PlayerState>(['crouch', 'slide']);
 
+/**
+ * PlayerState → registered animation key.  Most states share a name with
+ * their animation; 'hurt' and 'dead' map to the differently-named assets.
+ */
+const STATE_ANIM: Record<PlayerState, string> = {
+  idle:       ANIM_KEY.IDLE,
+  run:        ANIM_KEY.RUN,
+  jump:       ANIM_KEY.JUMP,
+  fall:       ANIM_KEY.FALL,
+  shoot:      ANIM_KEY.SHOOT,
+  shoot_run:  ANIM_KEY.SHOOT_RUN,
+  jump_shoot: ANIM_KEY.JUMP_SHOOT,
+  crouch:     ANIM_KEY.CROUCH,
+  slide:      ANIM_KEY.SLIDE,
+  hurt:       ANIM_KEY.TAKE_DAMAGE,
+  dead:       ANIM_KEY.DEATH,
+};
+
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private playerState: PlayerState = 'idle';
 
@@ -133,6 +151,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.arcadeBody.setSize(PLAYER.body.width, PLAYER.body.height);
     this.arcadeBody.setOffset(PLAYER.body.offsetX, PLAYER.body.offsetY);
+
+    // Terminal velocity cap — gravity alone reaches 980 px/s after 1s of fall,
+    // which at 60fps is ~16 px/frame.  Platform bodies are only 16 px tall, so
+    // any higher Y speed risks tunneling through on a diagonal approach.
+    // X cap comfortably clears slide (480) and hurt knockback (100).
+    this.arcadeBody.setMaxVelocity(900, 800);
 
     this.cursors  = scene.input.keyboard!.createCursorKeys();
     this.shootKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
@@ -240,16 +264,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const pushRight = sourceX !== undefined ? (this.x >= sourceX) : !this.flipX;
     const dirX = pushRight ? 1 : -1;
 
+    // Route through transition() so the body hitbox reverts to standing size
+    // if we were sliding/crouching when hit.  A shorter body combined with a
+    // thin (16-px) platform body is a tunneling recipe.  transition() also
+    // plays the right anim via STATE_ANIM.
     if (this._health <= 0) {
-      this.playerState = 'dead';
-      this.play(ANIM_KEY.DEATH, true);
+      this.transition('dead');
       this.arcadeBody.setVelocity(dirX * PLAYER.hurtKnockbackX * 0.5, PLAYER.hurtKnockbackY);
       this.emit('player-died');
       return;
     }
 
-    this.playerState = 'hurt';
-    this.play(ANIM_KEY.TAKE_DAMAGE, true);
+    this.transition('hurt');
     this.arcadeBody.setVelocity(dirX * PLAYER.hurtKnockbackX, PLAYER.hurtKnockbackY);
   }
 
@@ -425,7 +451,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const willLow = LOW_STATES.has(next);
 
     this.playerState = next;
-    this.play(next, true);
+    this.play(STATE_ANIM[next], true);
 
     if (next === 'shoot_run') this.shootRunFired    = false;
     if (next === 'jump_shoot') {
