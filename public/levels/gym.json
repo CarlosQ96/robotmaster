@@ -585,7 +585,7 @@
         -1,
         -1,
         -1,
-        -1,
+        0,
         -1,
         -1,
         -1,
@@ -1065,5 +1065,28 @@
         -1
       ]
     ]
-  }
+  },
+  "enemies": [
+    {
+      "id": "e_mo370vkk_1",
+      "type": "penguin_bot",
+      "x": 400,
+      "y": 272,
+      "health": 3,
+      "speed": 60,
+      "patrolL": 0,
+      "patrolR": 0
+    }
+  ],
+  "spawners": [
+    {
+      "id": "s_mo370vro_2",
+      "enemyType": "penguin_bot",
+      "x": 688,
+      "y": 272,
+      "intervalMs": 2500,
+      "maxAlive": 3,
+      "initialDelayMs": 0
+    }
+  ]
 }

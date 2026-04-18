@@ -27,8 +27,11 @@ const config: Phaser.Types.Core.GameConfig = {
   antialiasGL: false,
   roundPixels: false,
 
+  // Fit the canvas to the browser viewport, preserving the 16:9 aspect ratio.
+  // Nearest-neighbour filtering (antialias:false above) keeps pixel art readable
+  // even at fractional scales; any leftover space becomes a black letterbox.
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode:       Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
 

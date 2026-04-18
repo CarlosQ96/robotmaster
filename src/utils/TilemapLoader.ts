@@ -36,6 +36,37 @@
  */
 import * as Phaser from 'phaser';
 
+// ─── Placed entities ────────────────────────────────────────────────────────
+// Authored in the editor, stored in the level JSON, consumed at runtime by a
+// future spawning system.  Coordinates are in WORLD pixels (post-scale),
+// snapped to tile-cell centers by the editor.
+
+/** A single pre-placed enemy instance. */
+export interface EnemyPlacement {
+  id:           string;   // unique per level (editor-generated)
+  type:         string;   // catalog key (e.g. 'penguin_bot')
+  x:            number;   // world px
+  y:            number;
+  facingRight?: boolean;
+  // Per-placement attribute overrides (defaults come from the catalog).
+  health?:      number;
+  speed?:       number;
+  patrolL?:     number;
+  patrolR?:     number;
+}
+
+/** A spawner that emits enemies on a timer. */
+export interface SpawnerPlacement {
+  id:               string;
+  enemyType:        string; // catalog key of the enemy it spawns
+  x:                number;
+  y:                number;
+  intervalMs:       number;
+  maxAlive?:        number;
+  initialDelayMs?:  number;
+  totalSpawns?:     number;  // -1 or missing = infinite
+}
+
 export interface LevelData {
   name:         string;
   tileWidth:    number;
@@ -49,6 +80,10 @@ export interface LevelData {
   /** Optional image cache key rendered behind the ground layer (scrolls with
    *  a 0.3 parallax factor).  Set to the same key used in this.load.image. */
   background?:  string;
+  /** Pre-placed enemies (authored in the editor). */
+  enemies?:     EnemyPlacement[];
+  /** Timer-based spawners (authored in the editor). */
+  spawners?:    SpawnerPlacement[];
 }
 
 export interface LoadedLevel {

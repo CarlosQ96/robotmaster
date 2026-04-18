@@ -13,6 +13,7 @@
  *   MAIN GAME      → destination 'GameScene' (placeholder — not yet implemented)
  */
 import * as Phaser from 'phaser';
+import { getAudio } from '../audio/AudioManager';
 
 interface MenuItem {
   label: string;
@@ -52,6 +53,8 @@ export class TitleScene extends Phaser.Scene {
     this.buildMenu(cx, cy);
     this.buildHint(cx, height);
     this.registerKeys();
+
+    getAudio(this).playMusic('title');
   }
 
   // ── Background ─────────────────────────────────────────────────────────────

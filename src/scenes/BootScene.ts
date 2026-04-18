@@ -12,10 +12,11 @@
  * because it reads pixel data from already-loaded HTMLImageElements.
  */
 import * as Phaser from 'phaser';
-import { PLAYER } from '../config/gameConfig';
+import { AUDIO, PLAYER } from '../config/gameConfig';
 import { PENGUIN_BOT, PENGUIN_BOMB } from '../config/enemyConfig';
 import { PALETTES } from '../config/paletteConfig';
 import { applyAllPalettes } from '../utils/paletteSwap';
+import { AudioManager } from '../audio/AudioManager';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -100,12 +101,39 @@ export class BootScene extends Phaser.Scene {
     });
     this.load.image('castle_bg', 'assets/castle/castle_bg.png');
     this.load.json('level-gym', 'levels/gym.json');
+
+    // ── Audio ─────────────────────────────────────────────────────────────
+    // Swallow 404s so missing files don't break boot while the audio
+    // catalog is still being filled in.  AudioManager's playSfx/playMusic
+    // gracefully no-op for any key that never landed in the cache.
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+      if (file.type === 'audio') {
+        console.warn(`[audio] missing asset (${file.key}) — call will be silent`);
+      }
+    });
+
+    for (const entry of Object.values(AUDIO.sfx)) {
+      this.load.audio(entry.key, [
+        `assets/audio/sfx/${entry.key}.webm`,
+        `assets/audio/sfx/${entry.key}.mp3`,
+      ]);
+    }
+    for (const entry of Object.values(AUDIO.music)) {
+      this.load.audio(entry.key, [
+        `assets/audio/music/${entry.key}.webm`,
+        `assets/audio/music/${entry.key}.mp3`,
+      ]);
+    }
   }
 
   create(): void {
     // Generate all non-default palette textures (canvas pixel-swap).
     // Must run after preload() so player_default HTMLImageElement is available.
     applyAllPalettes(this, PALETTES);
+
+    // Install the global AudioManager.  Any scene reaches it via
+    // getAudio(scene) from src/audio/AudioManager.ts.
+    this.registry.set('audio', new AudioManager(this.game));
 
     this.scene.start('TitleScene');
   }

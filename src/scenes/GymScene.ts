@@ -27,6 +27,7 @@
  */
 import * as Phaser from 'phaser';
 import { DISPLAY, WORLD, DEBUG, CAMERA, TILE, PROJECTILE } from '../config/gameConfig';
+import { getAudio } from '../audio/AudioManager';
 import { PLAYER_ANIMS } from '../config/animConfig';
 import { DEFAULT_PALETTE } from '../config/paletteConfig';
 import { Player, ShootEvent } from '../entities/Player';
@@ -135,6 +136,8 @@ export class GymScene extends Phaser.Scene {
     this.buildBombPool();
     this.setupCombatColliders();
     this.setupCamera();
+
+    getAudio(this).playMusic('gym');
 
     if (DEBUG.enabled) {
       // debugGraphic was created (debug:true in main.ts), but start with drawing off.
@@ -375,8 +378,13 @@ export class GymScene extends Phaser.Scene {
     this.player.on('player-shoot', (evt: ShootEvent) => {
       if (evt.type === 'small') {
         this.fireBullet(evt.x, evt.y, evt.facingRight);
+        getAudio(this).playSfx('shoot');
+      } else if (evt.type === 'charged') {
+        this.fireChargedBullet(evt.x, evt.y, evt.facingRight, evt.type);
+        getAudio(this).playSfx('shootCharged');
       } else {
         this.fireChargedBullet(evt.x, evt.y, evt.facingRight, evt.type);
+        getAudio(this).playSfx('shootFull');
       }
     });
   }
@@ -493,6 +501,7 @@ export class GymScene extends Phaser.Scene {
       if (!b.active || e.currentState === 'dead') return;
       e.takeDamage(PROJECTILE.small.damage, b.x);
       b.kill();
+      getAudio(this).playSfx('enemyHit');
     });
     this.physics.add.overlap(this.chargedBulletGroup, this.penguins, (enemy, bullet) => {
       const e = enemy  as PenguinBot;
@@ -500,6 +509,7 @@ export class GymScene extends Phaser.Scene {
       if (!b.active || e.currentState === 'dead') return;
       e.takeDamage(PROJECTILE.charged.damage, b.x);
       b.kill();
+      getAudio(this).playSfx('hit');
     });
     this.physics.add.overlap(this.fullChargedBulletGroup, this.penguins, (enemy, bullet) => {
       const e = enemy  as PenguinBot;
@@ -507,6 +517,7 @@ export class GymScene extends Phaser.Scene {
       if (!b.active || e.currentState === 'dead') return;
       e.takeDamage(PROJECTILE.fullCharged.damage, b.x);
       b.kill();
+      getAudio(this).playSfx('hit');
     });
 
     // Enemy ↔ enemy — dynamic bodies bounce off each other, no stacking.

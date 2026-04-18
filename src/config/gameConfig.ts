@@ -256,6 +256,62 @@ export const PROJECTILE = {
   },
 } as const;
 
+// ─── Audio ──────────────────────────────────────────────────────────────────
+/**
+ * Audio system — three volume buses (master, music, sfx) and two catalogs.
+ *
+ * Effective playback volume per sound =
+ *   bus[category] × master × sound.volume
+ *
+ * BootScene iterates the `sfx` / `music` entries to auto-preload every
+ * declared key.  The AudioManager gracefully no-ops if a key isn't in the
+ * cache yet — so you can wire call sites before the audio files exist.
+ *
+ * File convention under public/assets/audio/:
+ *   sfx/<key>.{webm,mp3}     music/<key>.{webm,mp3}
+ * Provide BOTH formats — browsers auto-pick; webm on Firefox/Chrome, mp3 on Safari.
+ */
+export const AUDIO = {
+  /** localStorage key for persisted volume / mute settings. */
+  persistKey: 'robot-lords:audio',
+
+  /** Crossfade duration when swapping music tracks (ms). */
+  crossfadeMs: 500,
+
+  /** Volume buses.  `defaultVolume` seeds persisted state on first run. */
+  buses: {
+    master: { defaultVolume: 0.8 },
+    music:  { defaultVolume: 0.6 },
+    sfx:    { defaultVolume: 0.9 },
+  },
+
+  /**
+   * One-shot sound effects.  `volume` is the per-clip default (0–1) multiplied
+   * in on top of the bus volumes.  Keep these tuned so raw playback is even
+   * before the user touches master/sfx.
+   */
+  sfx: {
+    jump:         { key: 'sfx-jump',          volume: 0.6 },
+    slide:        { key: 'sfx-slide',         volume: 0.7 },
+    shoot:        { key: 'sfx-shoot',         volume: 0.4 },
+    shootCharged: { key: 'sfx-shoot-charged', volume: 0.55 },
+    shootFull:    { key: 'sfx-shoot-full',    volume: 0.7 },
+    hit:          { key: 'sfx-hit',           volume: 0.6 },  // projectile → enemy
+    hurt:         { key: 'sfx-hurt',          volume: 0.8 },  // player damaged
+    enemyHit:     { key: 'sfx-enemy-hit',     volume: 0.6 },
+  },
+
+  /** Looping background tracks.  Only one plays at a time (crossfade on swap). */
+  music: {
+    title: { key: 'music-title', volume: 1.0 },
+    gym:   { key: 'music-gym',   volume: 1.0 },
+  },
+} as const;
+
+/** Derived types for compile-time checking of sfx / music call sites. */
+export type SfxKey   = keyof typeof AUDIO.sfx;
+export type MusicKey = keyof typeof AUDIO.music;
+
 // ─── Debug ──────────────────────────────────────────────────────────────────
 export const DEBUG = {
   /** Master on/off — set false for a clean build */
@@ -302,5 +358,8 @@ export const DEBUG = {
     frameStep: 'F',
     frameNext: 'PERIOD',
     framePrev: 'COMMA',
+    /** [M] mute/unmute music bus; [N] mute/unmute sfx bus. */
+    toggleMusicMute: 'M',
+    toggleSfxMute:   'N',
   },
 } as const;

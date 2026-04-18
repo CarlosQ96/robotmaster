@@ -39,6 +39,7 @@
 import * as Phaser from 'phaser';
 import { PLAYER, PROJECTILE } from '../config/gameConfig';
 import { PLAYER_ANIMS, ANIM_KEY } from '../config/animConfig';
+import { getAudio } from '../audio/AudioManager';
 
 /** Event emitted on every shot. GymScene listens and spawns the right bullet. */
 export interface ShootEvent {
@@ -253,6 +254,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this._health = Math.max(0, this._health - amount);
     this.invulnTimer = PLAYER.invulnMs;
+
+    getAudio(this.scene).playSfx('hurt');
 
     // Reset any charging state so we don't fire the moment we recover.
     this.chargeTimer = 0;
@@ -545,6 +548,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.playerState === 'shoot') {
       if (jumpPressed && onGround) {
         body.setVelocityY(PLAYER.jumpVelocity);
+        getAudio(this.scene).playSfx('jump');
         this.transition('jump_shoot');
         return;
       }
@@ -584,10 +588,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.playerState === 'shoot_run') {
       if (slideTapped && onGround) {
         body.setVelocityX(this.flipX ? PLAYER.slideSpeed : -PLAYER.slideSpeed);
+        getAudio(this.scene).playSfx('slide');
         this.transition('slide');
         return;
       }
-      if (jumpPressed && onGround && !goDown) body.setVelocityY(PLAYER.jumpVelocity);
+      if (jumpPressed && onGround && !goDown) {
+        body.setVelocityY(PLAYER.jumpVelocity);
+        getAudio(this.scene).playSfx('jump');
+      }
       if (!onGround) {
         this.shootRunExitTimer = 0;
         this.transition(body.velocity.y < 0 ? 'jump' : 'fall');
@@ -612,11 +620,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (slideTapped && onGround) {
       body.setVelocityX(this.flipX ? PLAYER.slideSpeed : -PLAYER.slideSpeed);
+      getAudio(this.scene).playSfx('slide');
       this.transition('slide');
       return;
     }
 
-    if (jumpPressed && onGround && !goDown) body.setVelocityY(PLAYER.jumpVelocity);
+    if (jumpPressed && onGround && !goDown) {
+      body.setVelocityY(PLAYER.jumpVelocity);
+      getAudio(this.scene).playSfx('jump');
+    }
 
     if (!onGround) {
       this.transition(body.velocity.y < 0 ? 'jump' : 'fall');
