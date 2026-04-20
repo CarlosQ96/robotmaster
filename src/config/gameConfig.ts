@@ -63,9 +63,20 @@ export const PLAYER = {
 
   /**
    * Visual render scale applied to the sprite at runtime.
-   * 1 → sprite displays at 48×48 px on screen (1.5 tiles at 32px/tile).
+   *   1    → 48×48 on screen (character body ≈ 0.6×0.8 tiles — tiny).
+   *   1.5  → 72×72 — fractional; 3 source px → 4 or 5 screen px.
+   *   1.8  → 86.4×86.4 — fractional; slight shearing, but reads well in-world.
+   *   2    → 96×96 — classic NES ratio; cleanest pixels.
+   *
+   * Phaser's setScale also scales the physics body, so body.width/height
+   * stay in SOURCE pixels and render scaled.  Anything that adds source-
+   * pixel offsets to `sprite.x/y` (projectile muzzle positions) must
+   * multiply by this scale manually — see Player.emit*Shot.
+   *
+   * Bullets, enemies, and enemy projectiles all track this value so sprite
+   * sizes stay consistent — see PENGUIN_BOT.scale, Bullet.ts, ChargedBullet.ts.
    */
-  scale: 1,
+  scale: 1.75,
 
   /**
    * Standing arcade body (LOCAL / pre-scale pixels, measured from actual PNG).

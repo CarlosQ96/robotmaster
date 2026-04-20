@@ -36,6 +36,7 @@ export class PenguinBomb extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
+    this.setScale(PENGUIN_BOMB.scale);
     this.buildAnims();
     this.setupListeners();
 

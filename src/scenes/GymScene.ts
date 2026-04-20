@@ -30,12 +30,23 @@ import { DISPLAY, WORLD, DEBUG, CAMERA, TILE, PROJECTILE } from '../config/gameC
 import { getAudio } from '../audio/AudioManager';
 import { PLAYER_ANIMS } from '../config/animConfig';
 import { DEFAULT_PALETTE } from '../config/paletteConfig';
-import { Player, ShootEvent } from '../entities/Player';
+import { Player } from '../entities/Player';
 import { Bullet } from '../entities/Bullet';
 import { ChargedBullet } from '../entities/ChargedBullet';
-import { PenguinBot, PenguinThrowEvent } from '../entities/PenguinBot';
+import { PenguinBot } from '../entities/PenguinBot';
 import { PenguinBomb } from '../entities/PenguinBomb';
-import { PENGUIN_BOT, PENGUIN_BOMB } from '../config/enemyConfig';
+import { PENGUIN_BOMB } from '../config/enemyConfig';
+import {
+  registerBulletAnims,
+  createBulletSystem,
+  createBombPool,
+  wirePenguinBombs,
+  wireBulletEnemyCollisions,
+  wirePlayerEnemyCollisions,
+  wireBombPlayer,
+  type BulletSystem,
+  type BombPool,
+} from '../utils/combatSetup';
 import { cullOffscreen } from '../utils/outOfView';
 import { RespawnController } from '../utils/RespawnController';
 
@@ -81,13 +92,11 @@ const GYM_PLATFORMS: PlatformDef[] = [
 export class GymScene extends Phaser.Scene {
   private player!: Player;
   private physicsBodies: Phaser.GameObjects.Rectangle[] = [];
-  private bulletGroup!: Phaser.Physics.Arcade.Group;
-  private chargedBulletGroup!: Phaser.Physics.Arcade.Group;
-  private fullChargedBulletGroup!: Phaser.Physics.Arcade.Group;
+  private bullets!: BulletSystem;
 
   // Enemies
   private penguins: PenguinBot[] = [];
-  private bombGroup!: Phaser.Physics.Arcade.Group;
+  private bombs!: BombPool;
 
   // Debug UI (camera-fixed)
   private debugPanel!: Phaser.GameObjects.Text;
@@ -129,12 +138,20 @@ export class GymScene extends Phaser.Scene {
     this.buildBackground();
     this.buildPlatforms();
     this.buildPlayerAnims(this.paletteKey);
-    this.buildBulletAnims();
+    registerBulletAnims(this);
     this.spawnPlayer();
-    this.buildBullets();
+
+    this.bullets = createBulletSystem(this, this.player);
     this.spawnEnemies();
-    this.buildBombPool();
-    this.setupCombatColliders();
+    this.bombs = createBombPool(this);
+    for (const body of this.physicsBodies) {
+      this.physics.add.collider(this.bombs.group, body);
+    }
+    wirePenguinBombs(this.penguins, this.bombs);
+    wireBulletEnemyCollisions(this, this.bullets, this.penguins);
+    wirePlayerEnemyCollisions(this, this.player, this.penguins);
+    wireBombPlayer(this, this.bombs, this.player);
+
     this.setupCamera();
 
     getAudio(this).playMusic('gym');
@@ -333,92 +350,6 @@ export class GymScene extends Phaser.Scene {
     });
   }
 
-  // ── Bullet animations ──────────────────────────────────────────────────
-  /** Register looping 2-frame animations for charged and full-charged bullets. */
-  private buildBulletAnims(): void {
-    if (!this.anims.exists('bullet_anim_charged')) {
-      this.anims.create({
-        key:       'bullet_anim_charged',
-        frames:    this.anims.generateFrameNumbers('bullet_charged', { start: 0, end: 1 }),
-        frameRate: PROJECTILE.charged.animFps,
-        repeat:    -1,
-      });
-    }
-    if (!this.anims.exists('bullet_anim_full_charged')) {
-      this.anims.create({
-        key:       'bullet_anim_full_charged',
-        frames:    this.anims.generateFrameNumbers('bullet_full_charged', { start: 0, end: 1 }),
-        frameRate: PROJECTILE.fullCharged.animFps,
-        repeat:    -1,
-      });
-    }
-  }
-
-  // ── Bullets ────────────────────────────────────────────────────────────
-  private buildBullets(): void {
-    this.bulletGroup = this.physics.add.group({
-      classType: Bullet,
-      maxSize: PROJECTILE.small.poolSize,
-      runChildUpdate: false,
-    });
-
-    this.chargedBulletGroup = this.physics.add.group({
-      classType: ChargedBullet,
-      maxSize: PROJECTILE.charged.poolSize,
-      runChildUpdate: false,
-    });
-
-    this.fullChargedBulletGroup = this.physics.add.group({
-      classType: ChargedBullet,
-      maxSize: PROJECTILE.fullCharged.poolSize,
-      runChildUpdate: false,
-    });
-
-    // Route each shot to the correct pool based on charge type.
-    this.player.on('player-shoot', (evt: ShootEvent) => {
-      if (evt.type === 'small') {
-        this.fireBullet(evt.x, evt.y, evt.facingRight);
-        getAudio(this).playSfx('shoot');
-      } else if (evt.type === 'charged') {
-        this.fireChargedBullet(evt.x, evt.y, evt.facingRight, evt.type);
-        getAudio(this).playSfx('shootCharged');
-      } else {
-        this.fireChargedBullet(evt.x, evt.y, evt.facingRight, evt.type);
-        getAudio(this).playSfx('shootFull');
-      }
-    });
-  }
-
-  /** Small bullet — pool reuse, no tint. */
-  private fireBullet(x: number, y: number, facingRight: boolean): void {
-    let bullet = this.bulletGroup.getFirstDead(false) as Bullet | null;
-
-    if (!bullet && this.bulletGroup.getLength() < PROJECTILE.small.poolSize) {
-      bullet = new Bullet(this, x, y);
-      this.bulletGroup.add(bullet, false);
-    }
-
-    if (bullet) bullet.fire(x, y, facingRight);
-  }
-
-  /** Charged / full-charged bullet — pool reuse, original sprite colours. */
-  private fireChargedBullet(
-    x: number, y: number, facingRight: boolean,
-    type: 'charged' | 'full_charged',
-  ): void {
-    const group    = type === 'charged' ? this.chargedBulletGroup : this.fullChargedBulletGroup;
-    const poolSize = type === 'charged' ? PROJECTILE.charged.poolSize : PROJECTILE.fullCharged.poolSize;
-
-    let bullet = group.getFirstDead(false) as ChargedBullet | null;
-
-    if (!bullet && group.getLength() < poolSize) {
-      bullet = new ChargedBullet(this, x, y, type);
-      group.add(bullet, false);
-    }
-
-    if (bullet) bullet.fire(x, y, facingRight);
-  }
-
   // ── Enemies ────────────────────────────────────────────────────────────
 
   /** Spawn PenguinBots and attach platform colliders. */
@@ -437,111 +368,6 @@ export class GymScene extends Phaser.Scene {
         this.physics.add.collider(penguin, body);
       }
       return penguin;
-    });
-  }
-
-  /** Pool of PenguinBombs + platform colliders + throw-event wiring. */
-  private buildBombPool(): void {
-    this.bombGroup = this.physics.add.group({
-      classType:      PenguinBomb,
-      maxSize:        PENGUIN_BOMB.poolSize,
-      runChildUpdate: false,
-    });
-
-    // Bombs land on platforms
-    for (const body of this.physicsBodies) {
-      this.physics.add.collider(this.bombGroup, body);
-    }
-
-    // Listen for throw events from every penguin
-    for (const penguin of this.penguins) {
-      penguin.on('penguin-throw', (evt: PenguinThrowEvent) => {
-        this.fireBomb(evt.x, evt.y, evt.vx, evt.vy);
-      });
-    }
-  }
-
-  /** Grab an inactive bomb from the pool (or allocate up to poolSize) and launch it. */
-  private fireBomb(x: number, y: number, vx: number, vy: number): void {
-    let bomb = this.bombGroup.getFirstDead(false) as PenguinBomb | null;
-
-    if (!bomb && this.bombGroup.getLength() < PENGUIN_BOMB.poolSize) {
-      bomb = new PenguinBomb(this, x, y);
-      this.bombGroup.add(bomb, false);
-    }
-
-    if (bomb) bomb.fire(x, y, vx, vy);
-  }
-
-  // ── Combat colliders ───────────────────────────────────────────────────
-  /**
-   * Wire up all combat interactions:
-   *   - bullet → enemy         overlap (damage + kill bullet)
-   *   - enemy  ↔ enemy         collider (prevents stacking)
-   *   - player ↔ enemy         collider (solid body, contact damage)
-   *   - bomb   → player        overlap (fuse touch detonates; explosion damages)
-   *
-   * Overlap is used for damage-only interactions (no separation, no bounce).
-   * Collider is used when the bodies should physically stop each other.
-   *
-   * IMPORTANT — callback arg order:
-   *   When `overlap(group, array)` fires, Phaser routes through
-   *   `collideSpriteVsGroup(sprite, group)` (World.js:1929) and invokes the
-   *   callback as (sprite, groupChild).  For `overlap(bulletGroup, penguins)`
-   *   that means (penguin, bullet) — the group side comes SECOND, not first.
-   *   Naming the first param `bullet` and calling `.takeDamage` on the
-   *   second will crash with "takeDamage is not a function".
-   */
-  private setupCombatColliders(): void {
-    // Bullets → enemies. Damage scales with bullet tier.
-    // Callback args: (enemy, bullet) — see comment above on collideSpriteVsGroup order.
-    this.physics.add.overlap(this.bulletGroup, this.penguins, (enemy, bullet) => {
-      const e = enemy  as PenguinBot;
-      const b = bullet as Bullet;
-      if (!b.active || e.currentState === 'dead') return;
-      e.takeDamage(PROJECTILE.small.damage, b.x);
-      b.kill();
-      getAudio(this).playSfx('enemyHit');
-    });
-    this.physics.add.overlap(this.chargedBulletGroup, this.penguins, (enemy, bullet) => {
-      const e = enemy  as PenguinBot;
-      const b = bullet as ChargedBullet;
-      if (!b.active || e.currentState === 'dead') return;
-      e.takeDamage(PROJECTILE.charged.damage, b.x);
-      b.kill();
-      getAudio(this).playSfx('hit');
-    });
-    this.physics.add.overlap(this.fullChargedBulletGroup, this.penguins, (enemy, bullet) => {
-      const e = enemy  as PenguinBot;
-      const b = bullet as ChargedBullet;
-      if (!b.active || e.currentState === 'dead') return;
-      e.takeDamage(PROJECTILE.fullCharged.damage, b.x);
-      b.kill();
-      getAudio(this).playSfx('hit');
-    });
-
-    // Enemy ↔ enemy — dynamic bodies bounce off each other, no stacking.
-    this.physics.add.collider(this.penguins, this.penguins);
-
-    // Player ↔ enemy — solid (can't walk through) + contact damage.
-    // Invuln window inside Player.takeDamage prevents per-frame damage stacking.
-    this.physics.add.collider(this.player, this.penguins, (_p, enemy) => {
-      const e = enemy as PenguinBot;
-      if (e.currentState === 'dead') return;
-      this.player.takeDamage(PENGUIN_BOT.contactDamage, e.x);
-    });
-
-    // Bomb → player — overlap. Fuse touch detonates AND deals fuse damage;
-    // explosion deals its own (larger) damage while the explode body is active.
-    this.physics.add.overlap(this.player, this.bombGroup, (_p, bomb) => {
-      const bm = bomb as PenguinBomb;
-      if (!bm.active) return;
-      if (bm.isExploding) {
-        this.player.takeDamage(PENGUIN_BOMB.explodeDamage, bm.x);
-      } else {
-        this.player.takeDamage(PENGUIN_BOMB.fuseDamage, bm.x);
-        bm.detonate();
-      }
     });
   }
 
@@ -731,9 +557,9 @@ export class GymScene extends Phaser.Scene {
 
     // Return any bullet that has left the camera viewport to the pool.
     // margin=0: kill immediately on leaving the visible area.
-    cullOffscreen<Bullet>(this.bulletGroup, this.cameras.main, b => b.kill());
-    cullOffscreen<ChargedBullet>(this.chargedBulletGroup,     this.cameras.main, b => b.kill());
-    cullOffscreen<ChargedBullet>(this.fullChargedBulletGroup, this.cameras.main, b => b.kill());
+    cullOffscreen<Bullet>(this.bullets.small, this.cameras.main, b => b.kill());
+    cullOffscreen<ChargedBullet>(this.bullets.charged,     this.cameras.main, b => b.kill());
+    cullOffscreen<ChargedBullet>(this.bullets.fullCharged, this.cameras.main, b => b.kill());
 
     // Update enemies. Skip destroyed ones (dead penguins fade + destroy();
     // once destroyed, .active is false and calling update() is unsafe).
@@ -743,11 +569,11 @@ export class GymScene extends Phaser.Scene {
     }
 
     // Tick active bomb fuse timers; cull any that left the viewport
-    for (const child of this.bombGroup.getChildren()) {
+    for (const child of this.bombs.group.getChildren()) {
       const bomb = child as PenguinBomb;
       if (bomb.active) bomb.update(delta);
     }
-    cullOffscreen<PenguinBomb>(this.bombGroup, this.cameras.main, b => b.kill(), 64);
+    cullOffscreen<PenguinBomb>(this.bombs.group, this.cameras.main, b => b.kill(), 64);
 
     if (!DEBUG.enabled) return;
 
@@ -786,7 +612,7 @@ export class GymScene extends Phaser.Scene {
     const tileY = Math.floor(this.player.y / TILE.size);
 
     // ── Bullet pool memory stats ─────────────────────────────────────────
-    const bulletsActive = this.bulletGroup.countActive(true);
+    const bulletsActive = this.bullets.small.countActive(true);
 
     const bulletsCap    = PROJECTILE.small.poolSize;
     // Color-code: yellow when pool is half full, red when at cap
@@ -813,12 +639,12 @@ export class GymScene extends Phaser.Scene {
       `CAM     (${camX}, ${camY})`,
       '─'.repeat(26),
       'BULLETS',
-      `  SM  ${bulletsActive}/${bulletsCap}${poolWarn}   CH  ${this.chargedBulletGroup.countActive(true)}/${PROJECTILE.charged.poolSize}   FC  ${this.fullChargedBulletGroup.countActive(true)}/${PROJECTILE.fullCharged.poolSize}`,
+      `  SM  ${bulletsActive}/${bulletsCap}${poolWarn}   CH  ${this.bullets.charged.countActive(true)}/${PROJECTILE.charged.poolSize}   FC  ${this.bullets.fullCharged.countActive(true)}/${PROJECTILE.fullCharged.poolSize}`,
       `  SHOT CD  ${info.cooldown}   CHARGE  ${info.charge}`,
       '─'.repeat(26),
       'ENEMIES',
       ...this.penguins.map((p, i) =>
-        `  P${i + 1}  ${p.active ? p.currentState.toUpperCase().padEnd(7) : 'GONE   '}  BOMB ${this.bombGroup.countActive(true)}/${PENGUIN_BOMB.poolSize}`
+        `  P${i + 1}  ${p.active ? p.currentState.toUpperCase().padEnd(7) : 'GONE   '}  BOMB ${this.bombs.group.countActive(true)}/${PENGUIN_BOMB.poolSize}`
       ),
       '─'.repeat(26),
       '[P] PHYS  [G] GRID  [D] HUD',

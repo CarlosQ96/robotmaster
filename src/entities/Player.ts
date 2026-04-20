@@ -336,10 +336,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.shootCooldownTimer = this.shootCooldownMs;
 
     const facingRight = this.flipX;
-    const ox = facingRight ? PROJECTILE.small.muzzleOffsetX : -PROJECTILE.small.muzzleOffsetX;
-    const oy = LOW_STATES.has(this.playerState)
+    // Muzzle offsets are in SOURCE pixels; multiply by PLAYER.scale so the
+    // bullet emerges from the rendered gun tip at any sprite scale.
+    const ox = (facingRight ? PROJECTILE.small.muzzleOffsetX : -PROJECTILE.small.muzzleOffsetX) * PLAYER.scale;
+    const oy = (LOW_STATES.has(this.playerState)
       ? PROJECTILE.small.crouchMuzzleOffsetY
-      : PROJECTILE.small.muzzleOffsetY;
+      : PROJECTILE.small.muzzleOffsetY) * PLAYER.scale;
     this.emit('player-shoot', { x: this.x + ox, y: this.y + oy, facingRight, type: 'small' } as ShootEvent);
   }
 
@@ -350,8 +352,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const cfg      = type === 'charged' ? PROJECTILE.charged : PROJECTILE.fullCharged;
     const facingRight = this.flipX;
-    const ox = facingRight ? cfg.muzzleOffsetX : -cfg.muzzleOffsetX;
-    const oy = LOW_STATES.has(this.playerState) ? cfg.crouchMuzzleOffsetY : cfg.muzzleOffsetY;
+    const ox = (facingRight ? cfg.muzzleOffsetX : -cfg.muzzleOffsetX) * PLAYER.scale;
+    const oy = (LOW_STATES.has(this.playerState) ? cfg.crouchMuzzleOffsetY : cfg.muzzleOffsetY) * PLAYER.scale;
     this.emit('player-shoot', { x: this.x + ox, y: this.y + oy, facingRight, type } as ShootEvent);
   }
 

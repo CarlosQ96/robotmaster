@@ -1,18 +1,19 @@
 /**
- * Vite config — includes a dev-only level-save endpoint for the in-game editor.
+ * Vite config — dev-only endpoints that back the in-game level editor.
  *
- * POST /api/levels/:name  (JSON body = LevelData)
- *   → writes to public/levels/:name.json so the next page load serves it.
+ *   GET  /api/levels         → [{ name, size, mtime }] — list available levels
+ *   POST /api/levels/:name   (JSON body = LevelData) → writes public/levels/:name.json
  *
- * The endpoint ONLY exists on `vite dev`.  Production builds do not expose it,
- * so the editor is effectively a development tool.
+ * Both endpoints ONLY exist on `vite dev`.  Production builds do not expose
+ * them, so the editor is effectively a development tool.
  */
 import { defineConfig, type Plugin } from 'vite';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 const LEVELS_DIR = resolve(__dirname, 'public/levels');
 const ROUTE_PREFIX = '/api/levels/';
+const LIST_ROUTE = '/api/levels';
 
 function saveLevelPlugin(): Plugin {
   return {
@@ -20,6 +21,32 @@ function saveLevelPlugin(): Plugin {
     apply: 'serve',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        // ── GET /api/levels — list saved levels ────────────────────────────
+        if (req.method === 'GET' &&
+            (req.url === LIST_ROUTE || req.url === LIST_ROUTE + '/')) {
+          try {
+            await mkdir(LEVELS_DIR, { recursive: true });
+            const files = await readdir(LEVELS_DIR);
+            const entries = await Promise.all(
+              files
+                .filter((f) => f.endsWith('.json'))
+                .map(async (f) => {
+                  const s = await stat(join(LEVELS_DIR, f));
+                  return { name: f.replace(/\.json$/, ''), size: s.size, mtime: s.mtimeMs };
+                }),
+            );
+            entries.sort((a, b) => b.mtime - a.mtime);
+            res.statusCode = 200;
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify(entries));
+          } catch (err) {
+            res.statusCode = 500;
+            res.end(`list failed: ${(err as Error).message}`);
+          }
+          return;
+        }
+
+        // ── POST /api/levels/:name — save a level ──────────────────────────
         if (req.method !== 'POST' || !req.url?.startsWith(ROUTE_PREFIX)) {
           next();
           return;

@@ -102,10 +102,11 @@ export class PenguinBot extends Enemy {
           this.enemyState === 'attack' &&
           Number(frame.frame.name) === PENGUIN_BOT.throwFrame
         ) {
+          // Throw offsets are in SOURCE pixels; scale to match rendered sprite.
           const spawnX = this.x + (this.facingRight
             ?  PENGUIN_BOT.throwOffsetX
-            : -PENGUIN_BOT.throwOffsetX);
-          const spawnY = this.y + PENGUIN_BOT.throwOffsetY;
+            : -PENGUIN_BOT.throwOffsetX) * PENGUIN_BOT.scale;
+          const spawnY = this.y + PENGUIN_BOT.throwOffsetY * PENGUIN_BOT.scale;
           const { vx, vy } = this.calcThrowVelocity(spawnX, spawnY);
 
           this.emit('penguin-throw', { x: spawnX, y: spawnY, vx, vy } as PenguinThrowEvent);

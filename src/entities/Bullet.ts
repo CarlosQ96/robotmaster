@@ -16,7 +16,7 @@
  *   off-screen; any stale debug line is invisible.
  */
 import * as Phaser from 'phaser';
-import { PROJECTILE } from '../config/gameConfig';
+import { PLAYER, PROJECTILE } from '../config/gameConfig';
 
 /** Off-screen parking coordinate for killed bullets (body remains in tree). */
 const POOL_PARK = -10000;
@@ -27,6 +27,11 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
+
+    // Match PLAYER.scale so bullet size is visually consistent with the
+    // shooter.  Phaser scales the body with the sprite automatically, so
+    // body.setSize() stays in source pixels.
+    this.setScale(PLAYER.scale);
 
     const b = this.arcadeBody;
     b.setAllowGravity(false);

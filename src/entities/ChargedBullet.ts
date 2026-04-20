@@ -5,7 +5,7 @@
  * mutating world.bodies, so kill() is safe to call inside overlap callbacks.
  */
 import * as Phaser from 'phaser';
-import { PROJECTILE } from '../config/gameConfig';
+import { PLAYER, PROJECTILE } from '../config/gameConfig';
 
 export type ChargedBulletType = 'charged' | 'full_charged';
 
@@ -31,6 +31,10 @@ export class ChargedBullet extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
+
+    // Match PLAYER.scale for visually-consistent sprite sizes.  Body size
+    // stays in source pixels — Phaser scales it with the sprite.
+    this.setScale(PLAYER.scale);
 
     const cfg = CFG[bulletType];
     const b = this.arcadeBody;

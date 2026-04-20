@@ -10,7 +10,8 @@ export const PENGUIN_BOT = {
   /** Source sheet: Penguin_Bot.png — 480 × 40 px | 12 frames × 40 px */
   frameWidth:  40,
   frameHeight: 40,
-  scale:        1,
+  /** Matches PLAYER.scale so sprite sizes stay consistent across entities. */
+  scale:        1.75,
 
   /**
    * Arcade body (standing pose).
@@ -56,6 +57,8 @@ export const PENGUIN_BOMB = {
   /** Source sheet: Penguin_Bot_Bomb.png — 320 × 32 px | 10 frames × 32 px */
   frameWidth:  32,
   frameHeight: 32,
+  /** Matches PLAYER / PENGUIN_BOT scale for consistent sprite sizes. */
+  scale:        1.75,
 
   /** Launch arc (px/s).  Horizontal sign is applied per throw direction. */
   throwVelX:  160,

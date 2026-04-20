@@ -26,7 +26,7 @@
  *   G            toggle grid overlay
  *   S / Ctrl+S   save level
  *   Esc          deselect + disarm
- *   E            exit to GymScene (confirms if unsaved)
+ *   E            exit to LevelPickerScene (confirms if unsaved)
  */
 import * as Phaser from 'phaser';
 import { DISPLAY, WORLD } from '../config/gameConfig';
@@ -49,9 +49,34 @@ import {
 } from '../config/editorCatalog';
 
 // ─── Editor constants ───────────────────────────────────────────────────────
-const LEVEL_KEY        = 'level-gym';
-const LEVEL_NAME       = 'gym';
-const SAVE_URL         = `/api/levels/${LEVEL_NAME}`;
+/**
+ * The editor was originally hardcoded to `level-gym`.  Now it accepts a
+ * `levelName` via `scene.start('EditorScene', { levelName, isNew? })`, falling
+ * back to 'gym' if no init data is provided (so direct-start still works).
+ * Cache + save URLs are derived from the name at runtime.
+ */
+const DEFAULT_LEVEL_NAME = 'gym';
+
+/** Blank-level template used when the picker requests `isNew: true`. */
+function makeBlankLevel(name: string): LevelData {
+  const widthTiles  = 60;
+  const heightTiles = 17;
+  const row = (): number[] => Array.from({ length: widthTiles }, () => -1);
+  return {
+    name,
+    tileWidth:    16,
+    tileHeight:   16,
+    displayScale: 2,
+    widthTiles,
+    heightTiles,
+    tileset:      'castle',
+    background:   'castle_bg',
+    solidTiles:   [],
+    layers:       { ground: Array.from({ length: heightTiles }, row) },
+    enemies:      [],
+    spawners:     [],
+  };
+}
 
 const PALETTE_WIDTH    = 232;
 const PALETTE_TILE_PX  = 48;
@@ -105,6 +130,24 @@ export class EditorScene extends Phaser.Scene {
   private spawnerSprites: Phaser.GameObjects.Container[]   = [];
   private selectionRing!: Phaser.GameObjects.Rectangle;
 
+  /**
+   * Two-camera setup:
+   *   - `cameras.main` renders the WORLD (tilemap, entities, grid, hover
+   *     ghosts, selection ring).  Its viewport is inset by PALETTE_WIDTH
+   *     so world content never draws behind the palette sidebar.
+   *   - `uiCam` renders the UI (palette, tabs, HUD, attribute panel).
+   *     Full-screen viewport, scroll locked at (0, 0).
+   *
+   * Partitioning is done with two Phaser Layers: every UI object goes
+   * into `uiLayer`, everything else stays on the scene root.  The main
+   * camera `ignore(uiLayer)`s, the UI camera `ignore(worldLayer)`s.
+   * That way dynamic UI (attr panel rebuilds, tooltips, etc.) sorts
+   * correctly without any per-object plumbing.
+   */
+  private uiCam!:     Phaser.Cameras.Scene2D.Camera;
+  private uiLayer!:   Phaser.GameObjects.Layer;
+  private worldLayer!: Phaser.GameObjects.Layer;
+
   // Shared UI
   private paletteBg!:    Phaser.GameObjects.Rectangle;
   private hoverGhost!:   Phaser.GameObjects.Image;
@@ -126,7 +169,9 @@ export class EditorScene extends Phaser.Scene {
   private tilesetLabel!: Phaser.GameObjects.Text;
 
   // Tiles palette
-  private paletteTiles:     Phaser.GameObjects.Image[] = [];
+  private paletteTiles:         Phaser.GameObjects.Image[]     = [];
+  /** Red outline overlays — one per palette tile; visible iff the tile is in data.solidTiles. */
+  private paletteSolidOverlays: Phaser.GameObjects.Rectangle[] = [];
   private paletteHilite!:   Phaser.GameObjects.Rectangle;
   private selectedTile      = 0;
   private paletteScrollY    = 0;
@@ -159,73 +204,196 @@ export class EditorScene extends Phaser.Scene {
     aDown:  Phaser.Input.Keyboard.Key;
   };
 
+  // Active level — set in init(), read from cache in buildScene().
+  private levelName = DEFAULT_LEVEL_NAME;
+  private isNewLevel = false;
+
   constructor() { super({ key: 'EditorScene' }); }
 
   // ── lifecycle ────────────────────────────────────────────────────────────
+  /**
+   * Phaser reuses the scene instance across `scene.start('EditorScene', ...)`
+   * calls, so any transient arrays or flags we collected last time we ran are
+   * still sitting here — pointing at Phaser GameObjects that were destroyed
+   * on scene shutdown.  Reset all per-run state here BEFORE create() rebuilds
+   * the UI; otherwise e.g. `paletteTiles` contains dead refs at the expected
+   * tile indices and armTile()/applyPaletteScroll() operate on corpses — the
+   * symptom is a palette that looks populated but can't be selected.
+   */
+  init(data: { levelName?: string; isNew?: boolean } = {}): void {
+    this.levelName  = data.levelName ?? DEFAULT_LEVEL_NAME;
+    this.isNewLevel = Boolean(data.isNew);
+
+    // Transient render arrays — reset, not reused.
+    this.paletteTiles         = [];
+    this.paletteSolidOverlays = [];
+    this.enemyPaletteObjs     = [];
+    this.enemySprites         = [];
+    this.spawnerSprites       = [];
+    this.attrPanelObjs        = [];
+
+    // Editing state — clean slate every enter.
+    this.mode             = 'tiles';
+    this.armed            = null;
+    this.selected         = null;
+    this.dirty            = false;
+    this.paletteScrollY   = 0;
+    this.paletteMaxScrollY = 0;
+    this.selectedTile     = 0;
+    this.enemyArmedIndex  = -1;
+    this.panActive        = false;
+    this.showGrid         = true;
+  }
+
+  private get cacheKey(): string { return `level-${this.levelName}`; }
+  private get saveUrl():  string { return `/api/levels/${this.levelName}`; }
+
+  /** Tag a game object as world — rendered only by main camera, ignored by uiCam. */
+  private world<T extends Phaser.GameObjects.GameObject>(obj: T): T {
+    this.worldLayer.add(obj);
+    return obj;
+  }
+
+  /**
+   * Sweep every game object still at scene root into the correct layer:
+   *   - `setScrollFactor(0)` → UI layer (HUD, palette, attr panel)
+   *   - anything whose `depth >= DEPTH_UI_BG` → UI layer (belt and braces)
+   *   - everything else → world layer
+   *
+   * Safe to call repeatedly — objects already in either layer are skipped.
+   * Call after any code path that adds new game objects (initial build,
+   * attr-panel rebuild, dynamic enemy placement).
+   */
+  private partitionByCamera(): void {
+    // Clone — moving an object between display lists mutates the source.
+    const roots = [...this.children.list];
+    for (const obj of roots) {
+      // Don't re-parent the layer objects themselves (they live at scene root).
+      if ((obj as unknown) === this.uiLayer) continue;
+      if ((obj as unknown) === this.worldLayer) continue;
+      const go = obj as Phaser.GameObjects.GameObject & {
+        scrollFactorX?: number;
+        depth?:         number;
+      };
+      const scrollLocked = go.scrollFactorX === 0;
+      const hiDepth      = (go.depth ?? 0) >= DEPTH_UI_BG;
+      if (scrollLocked || hiDepth) this.uiLayer.add(obj);
+      else                         this.worldLayer.add(obj);
+    }
+  }
+
   create(): void {
-    // Re-fetch the JSON every time the editor opens so the cache reflects
-    // the latest saved edits (preload() only runs once per page load).
-    this.load.json(LEVEL_KEY + '-edit', `levels/${LEVEL_NAME}.json?t=${Date.now()}`);
+    // New level: seed a blank LevelData directly into cache — no fetch.
+    if (this.isNewLevel) {
+      this.cache.json.remove(this.cacheKey);
+      this.cache.json.add(this.cacheKey, makeBlankLevel(this.levelName));
+      this.buildScene();
+      this.dirty = true;   // unsaved by construction
+      this.refreshHud();
+      return;
+    }
+
+    // Existing level: re-fetch every time the editor opens so the cache
+    // reflects the latest saved edits (preload() only runs once per page load).
+    const editKey = this.cacheKey + '-edit';
+    this.load.json(editKey, `levels/${this.levelName}.json?t=${Date.now()}`);
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-      const fresh = this.cache.json.get(LEVEL_KEY + '-edit');
-      this.cache.json.add(LEVEL_KEY, fresh);
+      const fresh = this.cache.json.get(editKey);
+      this.cache.json.remove(this.cacheKey);
+      this.cache.json.add(this.cacheKey, fresh);
       this.buildScene();
     });
     this.load.start();
   }
 
   private buildScene(): void {
-    const camMain = this.cameras.main;
-    camMain.setBounds(0, 0, WORLD.width, WORLD.height);
-    camMain.setBackgroundColor(0x0a0d14);
+    // ── Two-camera setup ────────────────────────────────────────────────
+    // Main camera renders WORLD only, viewport inset so the sidebar never
+    // covers actual tiles.  UI camera renders UI only, full-screen.
+    // See class-field comment above for the design rationale.
+    this.worldLayer = this.add.layer();
+    this.uiLayer    = this.add.layer();
 
-    this.level = loadTilemap(this, LEVEL_KEY, this.tilesetKey);
+    const camMain = this.cameras.main;
+    camMain.setBackgroundColor(0x0a0d14);
+    camMain.setViewport(
+      PALETTE_WIDTH,
+      0,
+      DISPLAY.width - PALETTE_WIDTH,
+      DISPLAY.height,
+    );
+    camMain.setBounds(0, 0, WORLD.width, WORLD.height);
+    camMain.ignore(this.uiLayer);
+
+    this.uiCam = this.cameras.add(0, 0, DISPLAY.width, DISPLAY.height);
+    this.uiCam.setScroll(0, 0);
+    this.uiCam.ignore(this.worldLayer);
+
+    this.level = loadTilemap(this, this.cacheKey, this.tilesetKey);
     this.tileWidth    = this.level.data.tileWidth;
     this.tileHeight   = this.level.data.tileHeight;
     this.displayScale = this.level.data.displayScale;
+
+    // TilemapLoader creates groundLayer + optional background at scene
+    // root; move them into worldLayer so uiCam ignores them.
+    this.worldLayer.add(this.level.groundLayer);
+    if (this.level.background) this.worldLayer.add(this.level.background);
 
     // Ensure arrays exist on the loaded data so we can mutate freely.
     this.level.data.enemies  = this.level.data.enemies  ?? [];
     this.level.data.spawners = this.level.data.spawners ?? [];
 
-    this.gridGfx = this.add.graphics().setDepth(DEPTH_WORLD_GRID);
+    this.gridGfx = this.world(this.add.graphics().setDepth(DEPTH_WORLD_GRID));
     this.drawGrid();
 
     // Hover ghosts (one per armable kind — shown/hidden based on armed tool).
-    this.hoverGhost = this.add
-      .image(0, 0, this.tilesetKey, 0)
-      .setOrigin(0, 0)
-      .setScale(this.displayScale)
-      .setAlpha(0.55)
-      .setDepth(DEPTH_HOVER)
-      .setVisible(false);
+    this.hoverGhost = this.world(
+      this.add
+        .image(0, 0, this.tilesetKey, 0)
+        .setOrigin(0, 0)
+        .setScale(this.displayScale)
+        .setAlpha(0.55)
+        .setDepth(DEPTH_HOVER)
+        .setVisible(false),
+    );
 
-    this.hoverEnemyGhost = this.add
-      .image(0, 0, ENEMY_PROTOTYPES[0].iconKey, ENEMY_PROTOTYPES[0].iconFrame ?? 0)
-      .setOrigin(0.5, 0.5)
-      .setScale(this.displayScale)
-      .setAlpha(0.5)
-      .setDepth(DEPTH_HOVER)
-      .setVisible(false);
+    this.hoverEnemyGhost = this.world(
+      this.add
+        .image(0, 0, ENEMY_PROTOTYPES[0].iconKey, ENEMY_PROTOTYPES[0].iconFrame ?? 0)
+        .setOrigin(0.5, 0.5)
+        .setScale(this.displayScale)
+        .setAlpha(0.5)
+        .setDepth(DEPTH_HOVER)
+        .setVisible(false),
+    );
 
-    this.hoverSpawnerGhost = this.makeSpawnerIcon(0, 0, '?', 0)
-      .setDepth(DEPTH_HOVER)
-      .setAlpha(0.55)
-      .setVisible(false);
+    this.hoverSpawnerGhost = this.world(
+      this.makeSpawnerIcon(0, 0, '?', 0)
+        .setDepth(DEPTH_HOVER)
+        .setAlpha(0.55)
+        .setVisible(false),
+    );
 
     // Selection ring that tracks the currently-selected entity in-world.
-    this.selectionRing = this.add
-      .rectangle(0, 0, 56, 56)
-      .setOrigin(0.5, 0.5)
-      .setStrokeStyle(2, 0xffcc00, 1)
-      .setFillStyle()
-      .setDepth(DEPTH_WORLD_SELECT)
-      .setVisible(false);
+    this.selectionRing = this.world(
+      this.add
+        .rectangle(0, 0, 56, 56)
+        .setOrigin(0.5, 0.5)
+        .setStrokeStyle(2, 0xffcc00, 1)
+        .setFillStyle()
+        .setDepth(DEPTH_WORLD_SELECT)
+        .setVisible(false),
+    );
 
     this.buildUI();
     this.buildInput();
     this.rebuildEntitySprites();
     this.setMode('tiles');
+
+    // Sort every game object added by the build steps into the correct
+    // layer.  After this call, the main camera will only draw world stuff
+    // and the UI camera only draws UI.
+    this.partitionByCamera();
   }
 
   // ── Sidebar UI ───────────────────────────────────────────────────────────
@@ -300,9 +468,30 @@ export class EditorScene extends Phaser.Scene {
         .setDepth(DEPTH_UI_CONTENT)
         .setInteractive({ useHandCursor: true });
       img.on('pointerdown', (p: Phaser.Input.Pointer) => {
-        if (p.leftButtonDown()) this.armTile(i);
+        // Shift+LMB on a palette tile toggles solidity — doesn't overload
+        // RMB (which is "delete" on the world canvas).  Plain LMB arms.
+        // `p.event` can be a MouseEvent or TouchEvent depending on input
+        // source; only MouseEvent/KeyboardEvent have shiftKey — guard it.
+        if (p.leftButtonDown()) {
+          const shift = (p.event as MouseEvent | undefined)?.shiftKey ?? false;
+          if (shift) this.toggleTileSolid(i);
+          else       this.armTile(i);
+        }
       });
       this.paletteTiles.push(img);
+
+      // Solid-tile marker — red-tinted box overlay sized to the palette
+      // cell, with a thick red border.  Easier to spot at a glance than a
+      // thin outline.  Visibility tracks data.solidTiles, repositioned
+      // in applyPaletteScroll.
+      const overlay = this.add
+        .rectangle(x, y, PALETTE_TILE_PX, PALETTE_TILE_PX, 0xff3344, 0.25)
+        .setOrigin(0, 0)
+        .setStrokeStyle(3, 0xff3344, 1)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_UI_HILITE)
+        .setVisible(false);
+      this.paletteSolidOverlays.push(overlay);
     }
 
     const totalRows    = Math.ceil(totalTiles / PALETTE_COLS);
@@ -426,12 +615,30 @@ export class EditorScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(DEPTH_UI_CONTENT);
 
+    // Opaque hint bar — the old 9px text sat directly on the tilemap and was
+    // unreadable against bright tiles.  Dark strip + higher-contrast text.
+    const hintStripH = 18;
+    this.add
+      .rectangle(
+        PALETTE_WIDTH,
+        DISPLAY.height - hintStripH,
+        DISPLAY.width - PALETTE_WIDTH,
+        hintStripH,
+        0x0a1020,
+        0.92,
+      )
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, 0x1a3355)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_UI_BG);
+
     this.helpText = this.add
-      .text(PALETTE_WIDTH + 8, DISPLAY.height - 6,
-        'T/Y MODE  LMB PLACE/PAINT  RMB DELETE  [ ] CYCLE  G GRID  S SAVE  ESC DESELECT  E EXIT', {
+      .text(PALETTE_WIDTH + 8, DISPLAY.height - 4,
+        'T/Y MODE   LMB PLACE   RMB DELETE   SHIFT+LMB PALETTE=SOLID   ARROWS PAN   [ ] CYCLE   G GRID   S SAVE   R PLAY   E LOAD', {
         fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#446688',
+        fontSize:   '11px',
+        color:      '#88aacc',
+        letterSpacing: 1,
       })
       .setOrigin(0, 1)
       .setScrollFactor(0)
@@ -465,6 +672,7 @@ export class EditorScene extends Phaser.Scene {
     kb.on('keydown-T',   () => this.setMode('tiles'));
     kb.on('keydown-Y',   () => this.setMode('enemies'));
     kb.on('keydown-E',   () => this.exit());
+    kb.on('keydown-R',   () => this.playtest());
     kb.on('keydown-ESC', () => this.deselectAndDisarm());
     kb.on('keydown-OPEN_BRACKET',   () => this.cycleSelection(-1));
     kb.on('keydown-CLOSED_BRACKET', () => this.cycleSelection(+1));
@@ -774,6 +982,8 @@ export class EditorScene extends Phaser.Scene {
     this.spawnerSprites = [];
     for (const e of (this.level.data.enemies ?? [])) this.enemySprites.push(this.makeEnemySprite(e));
     for (const s of (this.level.data.spawners ?? [])) this.spawnerSprites.push(this.makeSpawnerSpriteFor(s));
+    // New sprites land at scene root; move them into the world layer.
+    this.partitionByCamera();
   }
 
   /** Visual for a spawner: dashed-ish circle + label lines.  Used in-world AND
@@ -987,6 +1197,11 @@ export class EditorScene extends Phaser.Scene {
       if (this.selected) this.deleteEntity(this.selected);
     });
     this.attrPanelObjs.push(delBg, delTxt);
+
+    // Dynamic attr panel objects were just added at scene root — move
+    // them into the UI layer so uiCam renders them and main camera
+    // doesn't leak them over the world.
+    this.partitionByCamera();
   }
 
   private adjustAttr(
@@ -1023,7 +1238,7 @@ export class EditorScene extends Phaser.Scene {
     this.showStatus('SAVING...', '#ffcc00');
     try {
       const payload: LevelData = this.level.data;
-      const res = await fetch(SAVE_URL, {
+      const res = await fetch(this.saveUrl, {
         method:  'POST',
         headers: { 'content-type': 'application/json' },
         body:    JSON.stringify(payload),
@@ -1043,7 +1258,20 @@ export class EditorScene extends Phaser.Scene {
       this.dirty = false;
       return;
     }
-    this.scene.start('GymScene');
+    this.scene.start('LevelPickerScene');
+  }
+
+  /**
+   * Jump into PlayScene with the current level.  If there are unsaved edits
+   * we auto-save first so the playtest always reflects what's on screen.
+   */
+  private async playtest(): Promise<void> {
+    if (this.dirty) {
+      this.showStatus('SAVING BEFORE PLAYTEST...', '#ffcc00');
+      await this.saveLevel();
+      if (this.dirty) return;  // save failed — showStatus already reported
+    }
+    this.scene.start('PlayScene', { levelName: this.levelName });
   }
 
   // ── Palette scroll (TILES mode) ─────────────────────────────────────────
@@ -1056,15 +1284,51 @@ export class EditorScene extends Phaser.Scene {
 
   private applyPaletteScroll(): void {
     const showTiles = this.mode === 'tiles';
+    const solidSet  = new Set(this.level?.data.solidTiles ?? []);
     for (let i = 0; i < this.paletteTiles.length; i++) {
       const img = this.paletteTiles[i];
       const row = Math.floor(i / PALETTE_COLS);
       const baseY = CONTENT_TOP + row * (PALETTE_TILE_PX + PALETTE_GAP);
       const y = baseY - this.paletteScrollY;
+      const visible = showTiles && this.isYInPaletteBand(y, PALETTE_TILE_PX);
       img.setY(y);
-      img.setVisible(showTiles && this.isYInPaletteBand(y, PALETTE_TILE_PX));
+      img.setVisible(visible);
+
+      const overlay = this.paletteSolidOverlays[i];
+      if (overlay) {
+        overlay.setY(y);
+        overlay.setVisible(visible && solidSet.has(i));
+      }
     }
     this.updateTileHilite();
+  }
+
+  /**
+   * Flip a tile's solidity (right-click on a palette cell).
+   * A tile is "solid" when its index appears in level.data.solidTiles —
+   * that's the array TilemapLoader hands to groundLayer.setCollision at
+   * PlayScene load time, so toggling here is all that's needed for the
+   * tile to block the player after a re-save.
+   */
+  private toggleTileSolid(index: number): void {
+    try {
+      const list = this.level.data.solidTiles ?? [];
+      const pos  = list.indexOf(index);
+      if (pos >= 0) list.splice(pos, 1);
+      else          list.push(index);
+      this.level.data.solidTiles = list;
+      this.dirty = true;
+      this.applyPaletteScroll();
+      this.refreshHud();
+      this.showStatus(
+        pos >= 0 ? `TILE ${index} → NOT SOLID` : `TILE ${index} → SOLID`,
+        pos >= 0 ? '#88aacc' : '#ff3344',
+      );
+    } catch (err) {
+      // Surface the crash the user reported rather than swallowing it.
+      console.error('[editor] toggleTileSolid failed:', err);
+      this.showStatus(`SOLID TOGGLE ERROR — see console`, '#ff3344');
+    }
   }
 
   private isYInPaletteBand(y: number, height: number): boolean {
@@ -1136,13 +1400,15 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private refreshHud(): void {
-    const dirtyFlag = this.dirty ? ' *' : '';
+    const dirtyFlag = this.dirty ? ' *UNSAVED' : '';
     const modeStr = this.mode.toUpperCase();
     let armedStr = '—';
     if (this.armed?.kind === 'tile')     armedStr = `TILE ${this.armed.index.toString().padStart(3,'0')}`;
     else if (this.armed?.kind === 'enemy')   armedStr = `${this.armed.protoId} SOLO`.toUpperCase();
     else if (this.armed?.kind === 'spawner') armedStr = `${this.armed.protoId} SPAWN`.toUpperCase();
-    this.infoText.setText(`${modeStr}  ${armedStr}${dirtyFlag}`);
+    this.infoText.setText(
+      `[${this.levelName.toUpperCase()}]  ${modeStr}  ${armedStr}${dirtyFlag}`,
+    );
   }
 
   private showStatus(text: string, color: string): void {
