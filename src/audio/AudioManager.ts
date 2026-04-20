@@ -208,9 +208,14 @@ export class AudioManager {
    * default from the catalog.
    */
   private refreshLiveVolumes(): void {
+    // `getAll()` is the public API — prior versions of this method reached
+    // into the private `sounds` array which can rename between Phaser
+    // releases.  `getAll(key?)` without a key returns every sound instance.
+    // The Phaser 4 TS declaration marks `key` as required even though the
+    // runtime accepts omitting it, so we cast to bypass the strict overload.
     const allSounds = (this.game.sound as unknown as {
-      sounds: Phaser.Sound.BaseSound[];
-    }).sounds;
+      getAll: () => Phaser.Sound.BaseSound[];
+    }).getAll();
 
     for (const sound of allSounds) {
       const bus = (sound as unknown as Record<string, unknown>)[SOUND_BUS_KEY] as BusName | undefined;

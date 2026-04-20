@@ -26,7 +26,6 @@ const config: Phaser.Types.Core.GameConfig = {
   // antialias:false → gl.NEAREST instead of gl.LINEAR for all textures.
   // roundPixels stays false; per-object vertexRoundMode:'safe' handles sub-pixel snapping.
   antialias: false,
-  antialiasGL: false,
   roundPixels: false,
 
   // Fit the canvas to the browser viewport, preserving the 16:9 aspect ratio.

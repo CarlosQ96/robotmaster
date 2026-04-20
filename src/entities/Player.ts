@@ -147,7 +147,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
 
     this.setScale(PLAYER.scale);
-    (this as unknown as Record<string, unknown>)['vertexRoundMode'] = 'safe';
+    // Phaser 4 per-object pixel snap: 'safe' rounds quad vertices without
+    // affecting rotation or scale math.  Narrow cast instead of an any.
+    (this as unknown as { vertexRoundMode: string }).vertexRoundMode = 'safe';
     this.setCollideWorldBounds(true);
 
     this.arcadeBody.setSize(PLAYER.body.width, PLAYER.body.height);

@@ -696,6 +696,19 @@ export class EditorScene extends Phaser.Scene {
       aUp:    kb.addKey('UP'),
       aDown:  kb.addKey('DOWN'),
     };
+
+    // Scene SHUTDOWN is fired on scene.start('OtherScene') — the scene
+    // instance is reused on re-entry, so we must strip listeners we added
+    // here, otherwise every re-entry stacks another copy on the keyboard
+    // plugin and the input handlers fire N times per keypress.  The keys
+    // registered via addKey are cleaned up by Phaser automatically.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off(Phaser.Input.Events.POINTER_MOVE, this.onPointerMove, this);
+      this.input.off(Phaser.Input.Events.POINTER_DOWN, this.onPointerDown, this);
+      this.input.off(Phaser.Input.Events.POINTER_UP,   this.onPointerUp,   this);
+      this.input.off(Phaser.Input.Events.POINTER_WHEEL);
+      this.input.keyboard?.removeAllListeners();
+    });
   }
 
   // Pointer ──────────────────────────────────────────────────────────────
@@ -857,8 +870,13 @@ export class EditorScene extends Phaser.Scene {
   private rebuildSpawnerGhost(proto: EnemyPrototype): void {
     this.hoverSpawnerGhost.removeAll(true);
     const fresh = this.makeSpawnerIcon(0, 0, 'S', 2500, proto.label);
-    // Copy children into the existing container so hoverSpawnerGhost keeps its ref.
+    // Re-parent the fresh container's children onto the long-lived ghost.
+    // IMPORTANT: Container.destroy() defaults to destroying its children too,
+    // which would nuke the GameObjects we just re-parented.  Call
+    // removeAll(false) first so the children are detached but alive, then
+    // destroy the now-empty shell.
     fresh.list.forEach((child) => this.hoverSpawnerGhost.add(child));
+    fresh.removeAll(false);
     fresh.destroy();
   }
 
