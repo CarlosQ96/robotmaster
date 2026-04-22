@@ -2,7 +2,7 @@
   "name": "gym",
   "tileWidth": 16,
   "tileHeight": 16,
-  "displayScale": 2,
+  "displayScale": 1,
   "widthTiles": 60,
   "heightTiles": 17,
   "tileset": "castle",

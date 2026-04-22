@@ -32,6 +32,9 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
     // shooter.  Phaser scales the body with the sprite automatically, so
     // body.setSize() stays in source pixels.
     this.setScale(PLAYER.scale);
+    // Sub-pixel snap — prevents the trailing-pixel line artifact at the
+    // fractional 1.75 scale.  Same trick as Player / Enemy base.
+    (this as unknown as { vertexRoundMode: string }).vertexRoundMode = 'safe';
 
     const b = this.arcadeBody;
     b.setAllowGravity(false);

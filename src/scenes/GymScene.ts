@@ -35,19 +35,57 @@ import { Bullet } from '../entities/Bullet';
 import { ChargedBullet } from '../entities/ChargedBullet';
 import { PenguinBot } from '../entities/PenguinBot';
 import { PenguinBomb } from '../entities/PenguinBomb';
+import { WalrusBot } from '../entities/WalrusBot';
+import { WalrusSnowball } from '../entities/WalrusSnowball';
+import { JetpackBot } from '../entities/JetpackBot';
+import { JetpackBullet } from '../entities/JetpackBullet';
+import { RollerBot } from '../entities/RollerBot';
+import { RollerBullet } from '../entities/RollerBullet';
+import { ToxicBarrelBot } from '../entities/ToxicBarrelBot';
+import { ToxicGoopShot } from '../entities/ToxicGoopShot';
+import { AllTerrainMissileBot } from '../entities/AllTerrainMissileBot';
+import { CannonBall } from '../entities/CannonBall';
+import { NuclearMonkeyBoss } from '../entities/NuclearMonkeyBoss';
+import { MonkeyBall } from '../entities/MonkeyBall';
 import { PENGUIN_BOMB } from '../config/enemyConfig';
 import {
   registerBulletAnims,
+  registerEnemyFxAnims,
   createBulletSystem,
   createBombPool,
+  createSnowballPool,
+  createJetpackBulletPool,
+  createRollerBulletPool,
+  createToxicGoopPool,
+  createCannonBallPool,
+  createMonkeyBallPool,
   wirePenguinBombs,
+  wireWalrusShots,
+  wireSnowballPlayer,
+  wireJetpackShots,
+  wireJetpackBulletPlayer,
+  wireRollerShots,
+  wireRollerBulletPlayer,
+  wireToxicShots,
+  wireToxicGoopPlayer,
+  wireAtmbShots,
+  wireCannonBallPlayer,
+  wireMonkeyThrows,
+  wireMonkeyBallPlayer,
   wireBulletEnemyCollisions,
   wirePlayerEnemyCollisions,
   wireBombPlayer,
   type BulletSystem,
+  type SnowballPool,
+  type JetpackBulletPool,
+  type RollerBulletPool,
+  type ToxicGoopPool,
+  type CannonBallPool,
+  type MonkeyBallPool,
   type BombPool,
 } from '../utils/combatSetup';
-import { cullOffscreen } from '../utils/outOfView';
+import { cullOffscreen, killBlockedProjectiles } from '../utils/outOfView';
+import { attachChargeEmitter, attachSlideDust } from '../utils/fxSystem';
 import { RespawnController } from '../utils/RespawnController';
 
 // ─── Platform layout data ───────────────────────────────────────────────────
@@ -95,8 +133,22 @@ export class GymScene extends Phaser.Scene {
   private bullets!: BulletSystem;
 
   // Enemies
-  private penguins: PenguinBot[] = [];
-  private bombs!: BombPool;
+  private penguins:  PenguinBot[]  = [];
+  private walruses:  WalrusBot[]   = [];
+  private jetpacks:  JetpackBot[]  = [];
+  private rollers:   RollerBot[]   = [];
+  private toxicBots: ToxicBarrelBot[] = [];
+  private atmbs:     AllTerrainMissileBot[] = [];
+  private monkeys:   NuclearMonkeyBoss[]    = [];
+  private chargeFx?: ReturnType<typeof attachChargeEmitter>;
+  private slideDust?: ReturnType<typeof attachSlideDust>;
+  private bombs!:         BombPool;
+  private snowballs!:     SnowballPool;
+  private jetpackBullets!: JetpackBulletPool;
+  private rollerBullets!:  RollerBulletPool;
+  private toxicGoop!:      ToxicGoopPool;
+  private cannonBalls!:    CannonBallPool;
+  private monkeyBalls!:    MonkeyBallPool;
 
   // Debug UI (camera-fixed)
   private debugPanel!: Phaser.GameObjects.Text;
@@ -139,18 +191,71 @@ export class GymScene extends Phaser.Scene {
     this.buildPlatforms();
     this.buildPlayerAnims(this.paletteKey);
     registerBulletAnims(this);
+    registerEnemyFxAnims(this);
     this.spawnPlayer();
 
-    this.bullets = createBulletSystem(this, this.player);
+    this.bullets   = createBulletSystem(this, this.player);
+    this.chargeFx  = attachChargeEmitter(this, this.player);
+    this.slideDust = attachSlideDust(this, this.player);
     this.spawnEnemies();
-    this.bombs = createBombPool(this);
+    this.bombs          = createBombPool(this);
+    this.snowballs      = createSnowballPool(this);
+    this.jetpackBullets = createJetpackBulletPool(this);
+    this.rollerBullets  = createRollerBulletPool(this);
+    this.toxicGoop      = createToxicGoopPool(this);
+    this.cannonBalls    = createCannonBallPool(this);
+    this.monkeyBalls    = createMonkeyBallPool(this);
+    // Bombs KEEP colliding (they bounce + roll until the fuse blows).
+    // Snowballs + jetpack bullets DIE on platform contact — straight-line
+    // projectiles should disappear when they hit a wall, not clatter around.
+    // Prefer `impact()` so the projectile plays its burst FX before pooling;
+    // falls back to `kill()` for plain bullets.  Callback arg order depends
+    // on which side is the group, so we check both args.
+    const impactOnHit = (a: unknown, b: unknown): void => {
+      const fire = (o: unknown) => {
+        const p = o as { impact?: () => void; kill?: () => void };
+        if (p.impact) p.impact();
+        else          p.kill?.();
+      };
+      fire(a);
+      fire(b);
+    };
     for (const body of this.physicsBodies) {
-      this.physics.add.collider(this.bombs.group, body);
+      this.physics.add.collider(this.bombs.group,          body);
+      this.physics.add.collider(this.snowballs.group,      body, impactOnHit);
+      this.physics.add.collider(this.jetpackBullets.group, body, impactOnHit);
+      this.physics.add.collider(this.rollerBullets.group,  body, impactOnHit);
+      this.physics.add.collider(this.toxicGoop.group,      body, impactOnHit);
+      // Cannon balls KEEP colliding (they bounce + land on platforms) —
+      // the ball's own timer drives the "landed → blink → disappear" arc.
+      this.physics.add.collider(this.cannonBalls.group,    body);
+      // Monkey balls bounce + roll on platforms; own lifetime kills them.
+      this.physics.add.collider(this.monkeyBalls.group,    body);
     }
     wirePenguinBombs(this.penguins, this.bombs);
-    wireBulletEnemyCollisions(this, this.bullets, this.penguins);
-    wirePlayerEnemyCollisions(this, this.player, this.penguins);
-    wireBombPlayer(this, this.bombs, this.player);
+    wireWalrusShots (this, this.walruses, this.snowballs);
+    wireJetpackShots(this, this.jetpacks,  this.jetpackBullets);
+    wireRollerShots (this.rollers, this.rollerBullets);
+    wireToxicShots  (this.toxicBots, this.toxicGoop);
+    wireAtmbShots   (this.atmbs, this.cannonBalls);
+    wireMonkeyThrows(this.monkeys, this.monkeyBalls);
+
+    // Bullets + body-contact damage apply to ALL enemy types — the helpers
+    // accept `Enemy[]` so we pass the combined list.
+    const enemies = [
+      ...this.penguins, ...this.walruses, ...this.jetpacks,
+      ...this.rollers, ...this.toxicBots, ...this.atmbs,
+      ...this.monkeys,
+    ];
+    wireBulletEnemyCollisions(this, this.bullets, enemies);
+    wirePlayerEnemyCollisions(this, this.player, enemies);
+    wireBombPlayer         (this, this.bombs,          this.player);
+    wireSnowballPlayer     (this, this.snowballs,      this.player);
+    wireJetpackBulletPlayer(this, this.jetpackBullets, this.player);
+    wireRollerBulletPlayer (this, this.rollerBullets,  this.player);
+    wireToxicGoopPlayer    (this, this.toxicGoop,      this.player);
+    wireCannonBallPlayer   (this, this.cannonBalls,    this.player);
+    wireMonkeyBallPlayer   (this, this.monkeyBalls,    this.player);
 
     this.setupCamera();
 
@@ -352,14 +457,14 @@ export class GymScene extends Phaser.Scene {
 
   // ── Enemies ────────────────────────────────────────────────────────────
 
-  /** Spawn PenguinBots and attach platform colliders. */
+  /** Spawn PenguinBots + one WalrusBot and attach platform colliders. */
   private spawnEnemies(): void {
-    const spawnDefs = [
+    const penguinDefs = [
       { x: 400, y: 460, patrolL: 300, patrolR: 560 },
       { x: 800, y: 460, patrolL: 700, patrolR: 960 },
     ];
 
-    this.penguins = spawnDefs.map(({ x, y, patrolL, patrolR }) => {
+    this.penguins = penguinDefs.map(({ x, y, patrolL, patrolR }) => {
       const penguin = new PenguinBot(this, x, y)
         .setPatrol(patrolL, patrolR)
         .setPlayer(this.player) as PenguinBot;
@@ -369,6 +474,57 @@ export class GymScene extends Phaser.Scene {
       }
       return penguin;
     });
+
+    // One walrus parked on zone D (right-center).  Patrol bounds keep him
+    // on his platform; he'll chase + shoot once the player is in aggro range.
+    const walrus = new WalrusBot(this, 1460, 460)
+      .setPatrol(1360, 1568)
+      .setPlayer(this.player) as WalrusBot;
+    for (const body of this.physicsBodies) {
+      this.physics.add.collider(walrus, body);
+    }
+    this.walruses = [walrus];
+
+    // One jetpack bot hovering above zone C apex — it'll lock onto the
+    // player on aggro and track them through the air.  No platform
+    // colliders: jetpack bots float (gravity disabled).
+    const jetpack = new JetpackBot(this, 960, 180).setPlayer(this.player) as JetpackBot;
+    this.jetpacks = [jetpack];
+
+    // One roller bot patrolling zone A (left-center).  Rolls back and
+    // forth; pops open + shoots when the player gets close.
+    const roller = new RollerBot(this, 180, 460)
+      .setPatrol(100, 304)
+      .setPlayer(this.player) as RollerBot;
+    for (const body of this.physicsBodies) {
+      this.physics.add.collider(roller, body);
+    }
+    this.rollers = [roller];
+
+    // One toxic barrel bot on the left side of zone B — stationary turret
+    // that alternates lower / upper attacks.  Vulnerable only during the
+    // upper-hatch window (see ToxicBarrelBot.takeDamage).
+    const toxic = new ToxicBarrelBot(this, 380, 278).setPlayer(this.player) as ToxicBarrelBot;
+    for (const body of this.physicsBodies) {
+      this.physics.add.collider(toxic, body);
+    }
+    this.toxicBots = [toxic];
+
+    // One missile tank patrolling the floor east of center.  Lobs cannon
+    // balls in arcs when the player gets close.
+    const atmb = new AllTerrainMissileBot(this, 1080, 460)
+      .setPatrol(1000, 1200)
+      .setPlayer(this.player) as AllTerrainMissileBot;
+    for (const body of this.physicsBodies) {
+      this.physics.add.collider(atmb, body);
+    }
+    this.atmbs = [atmb];
+
+    // Nuclear Monkey Boss near the right edge — stationary hovering
+    // presence that throws bouncing monkey balls.  No platform collider
+    // (gravity is disabled on him) and he won't be pushed by the player.
+    const monkey = new NuclearMonkeyBoss(this, 1760, 430).setPlayer(this.player) as NuclearMonkeyBoss;
+    this.monkeys = [monkey];
   }
 
   // ── Camera ─────────────────────────────────────────────────────────────
@@ -553,6 +709,8 @@ export class GymScene extends Phaser.Scene {
     // Player update is skipped in frame-step mode so you can inspect frames
     if (!this.frameStepMode) {
       this.player.update(delta);
+      this.chargeFx?.update();
+      this.slideDust?.update();
     }
 
     // Return any bullet that has left the camera viewport to the pool.
@@ -567,13 +725,67 @@ export class GymScene extends Phaser.Scene {
       if (!p.active) continue;
       p.update(delta);
     }
+    for (const w of this.walruses) {
+      if (!w.active) continue;
+      w.update(delta);
+    }
+    for (const j of this.jetpacks) {
+      if (!j.active) continue;
+      j.update(delta);
+    }
+    for (const r of this.rollers) {
+      if (!r.active) continue;
+      r.update(delta);
+    }
+    for (const t of this.toxicBots) {
+      if (!t.active) continue;
+      t.update(delta);
+    }
+    for (const a of this.atmbs) {
+      if (!a.active) continue;
+      a.update(delta);
+    }
+    for (const m of this.monkeys) {
+      if (!m.active) continue;
+      m.update(delta);
+    }
+
+    // Cannon balls own a landed → blink → kill timer; tick each one.
+    for (const child of this.cannonBalls.group.getChildren()) {
+      const ball = child as CannonBall;
+      if (ball.active) ball.update(delta);
+    }
+    // Monkey balls age to a self-kill timeout — tick them too.
+    for (const child of this.monkeyBalls.group.getChildren()) {
+      const ball = child as MonkeyBall;
+      if (ball.active) ball.update(delta);
+    }
 
     // Tick active bomb fuse timers; cull any that left the viewport
     for (const child of this.bombs.group.getChildren()) {
       const bomb = child as PenguinBomb;
       if (bomb.active) bomb.update(delta);
     }
-    cullOffscreen<PenguinBomb>(this.bombs.group, this.cameras.main, b => b.kill(), 64);
+    cullOffscreen<PenguinBomb>(this.bombs.group,     this.cameras.main, b => b.kill(), 64);
+    // Straight-line projectiles — no per-frame tick needed, just cull.
+    cullOffscreen<WalrusSnowball>(this.snowballs.group,      this.cameras.main, b => b.kill(), 32);
+    cullOffscreen<JetpackBullet >(this.jetpackBullets.group, this.cameras.main, b => b.kill(), 32);
+    cullOffscreen<RollerBullet  >(this.rollerBullets.group,  this.cameras.main, b => b.kill(), 32);
+    cullOffscreen<ToxicGoopShot >(this.toxicGoop.group,      this.cameras.main, b => b.kill(), 32);
+    // Cannon balls have gravity — they can leave the viewport while still
+    // alive.  Wider margin avoids killing one that's just about to land.
+    cullOffscreen<CannonBall    >(this.cannonBalls.group,    this.cameras.main, b => b.kill(), 96);
+    cullOffscreen<MonkeyBall    >(this.monkeyBalls.group,    this.cameras.main, b => b.kill(), 96);
+
+    // Belt-and-braces: any straight-line projectile currently touching
+    // a wall (arcade body blocked on any side) is killed, covering cases
+    // where the collider callback didn't fire before physics separation.
+    // NOTE: cannon balls intentionally SKIP this — they're supposed to
+    // land and sit.  Their own timer handles death.
+    killBlockedProjectiles(this.snowballs.group);
+    killBlockedProjectiles(this.jetpackBullets.group);
+    killBlockedProjectiles(this.rollerBullets.group);
+    killBlockedProjectiles(this.toxicGoop.group);
 
     if (!DEBUG.enabled) return;
 

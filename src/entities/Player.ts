@@ -59,6 +59,7 @@ export type PlayerState =
   | 'jump_shoot'
   | 'crouch'
   | 'slide'
+  | 'climb'
   | 'hurt'
   | 'dead';
 
@@ -67,7 +68,8 @@ const LOW_STATES = new Set<PlayerState>(['crouch', 'slide']);
 
 /**
  * PlayerState → registered animation key.  Most states share a name with
- * their animation; 'hurt' and 'dead' map to the differently-named assets.
+ * their animation; 'hurt', 'dead', and 'climb' map to different assets
+ * (climb reuses IDLE until a dedicated climb anim exists).
  */
 const STATE_ANIM: Record<PlayerState, string> = {
   idle:       ANIM_KEY.IDLE,
@@ -79,6 +81,7 @@ const STATE_ANIM: Record<PlayerState, string> = {
   jump_shoot: ANIM_KEY.JUMP_SHOOT,
   crouch:     ANIM_KEY.CROUCH,
   slide:      ANIM_KEY.SLIDE,
+  climb:      ANIM_KEY.IDLE,
   hurt:       ANIM_KEY.TAKE_DAMAGE,
   dead:       ANIM_KEY.DEATH,
 };
@@ -125,6 +128,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private jumpShootSettleTimer = 0;
   private static readonly JUMP_SHOOT_SETTLE_DELAY = 150; // ms
 
+  // ── Ladder ────────────────────────────────────────────────────────────────
+  private ladderLayer?: Phaser.Tilemaps.TilemapLayer;
+  private ladderTileIndices: number[] = [];
+  /**
+   * Gate for jump-off the ladder.  On climb entry this starts `false` so the
+   * same up-press that grabbed the ladder doesn't immediately fling the
+   * player off it.  Once the player releases UP, the gate opens and the
+   * next up-press exits the climb with a short hop.
+   */
+  private climbCanJump = false;
+
   // ── Health / damage ──────────────────────────────────────────────────────
   private _health: number = PLAYER.maxHealth;
   private invulnTimer     = 0;
@@ -134,6 +148,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   get health(): number            { return this._health; }
   get maxHealth(): number         { return PLAYER.maxHealth; }
   get isInvulnerable(): boolean   { return this.invulnTimer > 0; }
+  /** 0 = not charging, 1 = full-charge threshold reached.  Values can exceed
+   *  1 if the player keeps holding past full-charge; clamp at the call site. */
+  get chargeRatio(): number {
+    return this.chargeTimer / PROJECTILE.chargeTime.fullCharge;
+  }
 
   get arcadeBody(): Phaser.Physics.Arcade.Body {
     return this.body as Phaser.Physics.Arcade.Body;
@@ -167,6 +186,34 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.buildAnims(scene, textureKey);
     this.setupAnimListeners();
+  }
+
+  // ── Ladder wiring ────────────────────────────────────────────────────────
+  /**
+   * Provide the tilemap layer that contains ladder tiles plus the indices
+   * the player should treat as climbable.  Ladder tiles MUST also be absent
+   * from solidTiles (TilemapLoader strips them automatically).
+   */
+  setLadder(layer: Phaser.Tilemaps.TilemapLayer, tileIndices: number[]): void {
+    this.ladderLayer       = layer;
+    this.ladderTileIndices = tileIndices;
+  }
+
+  /** True if the player's center overlaps a ladder tile. */
+  private isOnLadder(): boolean {
+    if (!this.ladderLayer || this.ladderTileIndices.length === 0) return false;
+    const tile = this.ladderLayer.getTileAtWorldXY(this.x, this.y, true);
+    if (!tile) return false;
+    return this.ladderTileIndices.includes(tile.index);
+  }
+
+  /** Snap the player's x to the horizontal center of the currently-overlapped ladder tile. */
+  private snapToLadderColumn(): void {
+    if (!this.ladderLayer) return;
+    const tile = this.ladderLayer.getTileAtWorldXY(this.x, this.y, true);
+    if (!tile) return;
+    const tw = this.ladderLayer.tilemap.tileWidth * (this.ladderLayer.scaleX ?? 1);
+    this.x = tile.x * tw + tw / 2;
   }
 
   // ── Animation registration ───────────────────────────────────────────────
@@ -456,9 +503,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const wasLow  = LOW_STATES.has(this.playerState);
     const willLow = LOW_STATES.has(next);
+    const wasClimbing = this.playerState === 'climb';
 
     this.playerState = next;
     this.play(STATE_ANIM[next], true);
+
+    // Gravity ownership: climb turns it off; everything else leaves it on.
+    // Exit paths (hurt / dead / respawn / walk-off-top) all route through
+    // transition(), so this single rule keeps the body's gravity flag sane.
+    if (next === 'climb') {
+      this.arcadeBody.setAllowGravity(false);
+    } else if (wasClimbing) {
+      this.arcadeBody.setAllowGravity(true);
+      this.anims.resume();
+    }
 
     if (next === 'shoot_run') this.shootRunFired    = false;
     if (next === 'jump_shoot') {
@@ -541,6 +599,63 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // ── Z release → determine and fire bullet ─────────────────────────────
     if (shootReleased) {
       this.handleZRelease(savedChargeTimer, onGround, vx, goDown);
+    }
+
+    // ── Ladder entry / handling ───────────────────────────────────────────
+    // Up/Down pressed while overlapping a ladder → enter climb.  Entering
+    // climb overrides the normal jump-on-up behaviour below.  Shooting/slide
+    // states are excluded so the player isn't yanked onto a ladder mid-shot.
+    const climbBlocked =
+      this.playerState === 'slide' ||
+      this.playerState === 'shoot' ||
+      this.playerState === 'shoot_run' ||
+      this.playerState === 'jump_shoot';
+
+    if (
+      this.playerState !== 'climb' &&
+      !climbBlocked &&
+      (jumpPressed || goDown) &&
+      this.isOnLadder()
+    ) {
+      body.setVelocity(0, 0);
+      this.snapToLadderColumn();
+      this.transition('climb');
+      // Swallow the up-press so the same frame doesn't eject via jump-off.
+      this.climbCanJump = false;
+    }
+
+    if (this.playerState === 'climb') {
+      // Jump-off gate: the initial up-press that grabs the ladder must not
+      // immediately fling the player off.  Open the gate once up has been
+      // released mid-climb; after that, the next up-press exits with a hop.
+      if (!this.cursors.up.isDown) this.climbCanJump = true;
+
+      // Exit: jump off the ladder with a short hop.
+      if (jumpPressed && this.climbCanJump) {
+        body.setVelocityY(PLAYER.jumpVelocity * 0.6);
+        getAudio(this.scene).playSfx('jump');
+        this.transition('jump');
+        return;
+      }
+
+      // Exit: player climbed off the top (center no longer over a ladder).
+      if (!this.isOnLadder()) {
+        this.transition(body.blocked.down ? 'idle' : 'fall');
+        return;
+      }
+
+      // Climb motion — vy from up/down, horizontal locked.
+      let climbVy = 0;
+      if (this.cursors.up.isDown)   climbVy = -PLAYER.climbSpeed;
+      if (this.cursors.down.isDown) climbVy =  PLAYER.climbSpeed;
+      body.setVelocityX(0);
+      body.setVelocityY(climbVy);
+
+      // Pause/resume the idle anim so a stationary climb doesn't read as
+      // "just standing in the air" — while moving, let it breathe.
+      if (climbVy === 0) this.anims.pause();
+      else               this.anims.resume();
+      return;
     }
 
     // ── Movement state machine ─────────────────────────────────────────────

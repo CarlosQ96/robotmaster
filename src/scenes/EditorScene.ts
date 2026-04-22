@@ -32,6 +32,7 @@ import * as Phaser from 'phaser';
 import { DISPLAY, WORLD } from '../config/gameConfig';
 import {
   loadTilemap,
+  createBackground,
   type LoadedLevel,
   type LevelData,
   type EnemyPlacement,
@@ -41,6 +42,7 @@ import {
   TILESETS,
   ENEMY_PROTOTYPES,
   SPAWNER_ATTRS,
+  BACKGROUNDS,
   defaultEnemy,
   defaultSpawner,
   enemyProto,
@@ -66,7 +68,7 @@ function makeBlankLevel(name: string): LevelData {
     name,
     tileWidth:    16,
     tileHeight:   16,
-    displayScale: 2,
+    displayScale: 1,
     widthTiles,
     heightTiles,
     tileset:      'castle',
@@ -97,7 +99,7 @@ const DEPTH_UI_CONTENT  = 91;
 const DEPTH_UI_HILITE   = 92;
 const DEPTH_UI_PANEL    = 95;
 
-type EditorMode = 'tiles' | 'enemies';
+type EditorMode = 'tiles' | 'enemies' | 'bg';
 
 type ArmedTool =
   | null
@@ -116,7 +118,7 @@ export class EditorScene extends Phaser.Scene {
   private level!: LoadedLevel;
   private tileWidth  = 16;
   private tileHeight = 16;
-  private displayScale = 2;
+  private displayScale = 1;
   private tilesetKey: string = TILESETS[0].key;
 
   // Editor state
@@ -162,8 +164,10 @@ export class EditorScene extends Phaser.Scene {
   // Tabs
   private tabTilesBg!:   Phaser.GameObjects.Rectangle;
   private tabEnemiesBg!: Phaser.GameObjects.Rectangle;
+  private tabBgBg!:      Phaser.GameObjects.Rectangle;
   private tabTilesTxt!:  Phaser.GameObjects.Text;
   private tabEnemiesTxt!: Phaser.GameObjects.Text;
+  private tabBgTxt!:     Phaser.GameObjects.Text;
 
   // Tileset dropdown (TILES mode)
   private tilesetLabel!: Phaser.GameObjects.Text;
@@ -181,6 +185,14 @@ export class EditorScene extends Phaser.Scene {
   private enemyPaletteObjs:   Phaser.GameObjects.GameObject[] = [];
   private enemyPaletteHilite!: Phaser.GameObjects.Rectangle;
   private enemyArmedIndex     = -1; // palette row (enemy prototypes 0..N-1, then spawner proto N..)
+
+  // Backgrounds palette — one row per BACKGROUNDS entry plus a 'NONE' row.
+  // Selecting a row writes level.data.background and rebuilds the in-world
+  // background immediately; there's no arming step.
+  private bgPaletteObjs:     Phaser.GameObjects.GameObject[] = [];
+  private bgPaletteHilite!:  Phaser.GameObjects.Rectangle;
+  /** -1 means NONE (no background), 0..n-1 indexes into BACKGROUNDS. */
+  private selectedBgIndex    = -1;
 
   // Attribute panel (right side, shown when selected != null)
   private attrPanelObjs: Phaser.GameObjects.GameObject[] = [];
@@ -228,6 +240,7 @@ export class EditorScene extends Phaser.Scene {
     this.paletteTiles         = [];
     this.paletteSolidOverlays = [];
     this.enemyPaletteObjs     = [];
+    this.bgPaletteObjs        = [];
     this.enemySprites         = [];
     this.spawnerSprites       = [];
     this.attrPanelObjs        = [];
@@ -241,6 +254,7 @@ export class EditorScene extends Phaser.Scene {
     this.paletteMaxScrollY = 0;
     this.selectedTile     = 0;
     this.enemyArmedIndex  = -1;
+    this.selectedBgIndex  = -1;
     this.panActive        = false;
     this.showGrid         = true;
   }
@@ -408,6 +422,7 @@ export class EditorScene extends Phaser.Scene {
     this.buildTabs();
     this.buildTilesPalette();
     this.buildEnemiesPalette();
+    this.buildBgPalette();
     this.buildHud();
   }
 
@@ -433,11 +448,16 @@ export class EditorScene extends Phaser.Scene {
       bg.on('pointerdown', onClick);
       return { bg, txt };
     };
-    const tabW = (PALETTE_WIDTH - 24) / 2;
-    const tiles   = makeTab(8,           tabW, 'TILES',   () => this.setMode('tiles'));
-    const enemies = makeTab(16 + tabW,   tabW, 'ENEMIES', () => this.setMode('enemies'));
+    // Three equal tabs: 8px side margins, 4px gaps.
+    const GAP = 4;
+    const tabW = Math.floor((PALETTE_WIDTH - 16 - 2 * GAP) / 3);
+    const xFor = (i: number) => 8 + i * (tabW + GAP);
+    const tiles   = makeTab(xFor(0), tabW, 'TILES',   () => this.setMode('tiles'));
+    const enemies = makeTab(xFor(1), tabW, 'ENEMIES', () => this.setMode('enemies'));
+    const bgTab   = makeTab(xFor(2), tabW, 'BG',      () => this.setMode('bg'));
     this.tabTilesBg   = tiles.bg;   this.tabTilesTxt   = tiles.txt;
     this.tabEnemiesBg = enemies.bg; this.tabEnemiesTxt = enemies.txt;
+    this.tabBgBg      = bgTab.bg;   this.tabBgTxt      = bgTab.txt;
 
     // Tileset name — only visible in TILES mode.
     const active = TILESETS.find((t) => t.key === this.tilesetKey) ?? TILESETS[0];
@@ -592,6 +612,147 @@ export class EditorScene extends Phaser.Scene {
     this.enemyPaletteObjs.push(label, sublabel);
   }
 
+  private buildBgPalette(): void {
+    // Layout mirrors the enemies palette: one row per entry + a NONE row.
+    // NONE sits at index -1 (row 0); BACKGROUNDS entries start at row 1.
+    const rowH = 56;
+    this.addBgPaletteRow(0, null, rowH);
+    for (let i = 0; i < BACKGROUNDS.length; i++) {
+      this.addBgPaletteRow(i + 1, BACKGROUNDS[i], rowH);
+    }
+
+    this.bgPaletteHilite = this.add
+      .rectangle(4, CONTENT_TOP - 2, PALETTE_WIDTH - 8, rowH)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x00ff99)
+      .setFillStyle()
+      .setScrollFactor(0)
+      .setDepth(DEPTH_UI_HILITE)
+      .setVisible(false);
+    this.bgPaletteObjs.push(this.bgPaletteHilite);
+
+    // Seed selection from whatever the level already has.
+    const curKey = this.level?.data.background;
+    this.selectedBgIndex = curKey
+      ? BACKGROUNDS.findIndex((b) => b.key === curKey)
+      : -1;
+  }
+
+  /**
+   * Add one row to the BG palette.  `entry === null` renders the NONE row
+   * (removes any background); otherwise the row shows a tiny thumbnail of
+   * the background image plus its label.
+   */
+  private addBgPaletteRow(
+    row:   number,
+    entry: typeof BACKGROUNDS[number] | null,
+    rowH:  number,
+  ): void {
+    const y = CONTENT_TOP + row * rowH;
+
+    const strip = this.add
+      .rectangle(4, y, PALETTE_WIDTH - 8, rowH - 4, 0x142238, 0.6)
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, 0x1a3355)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_UI_CONTENT)
+      .setInteractive({ useHandCursor: true });
+    strip.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (p.leftButtonDown()) this.selectBg(entry ? row - 1 : -1);
+    });
+    this.bgPaletteObjs.push(strip);
+
+    if (entry) {
+      // Thumbnail — fit the natural image inside a 40×32 box without
+      // upscaling past source pixels (setDisplaySize would blur sharper
+      // than that on larger art; for our small backdrops this is fine).
+      const thumb = this.add
+        .image(28, y + rowH / 2 - 2, entry.key)
+        .setOrigin(0.5, 0.5)
+        .setScrollFactor(0)
+        .setDepth(DEPTH_UI_CONTENT + 1);
+      const tw = thumb.width || 1;
+      const th = thumb.height || 1;
+      const scale = Math.min(40 / tw, 32 / th, 1);
+      thumb.setScale(scale);
+      this.bgPaletteObjs.push(thumb);
+    } else {
+      // NONE — draw a crossed square so it reads at a glance.
+      const g = this.add
+        .graphics()
+        .setScrollFactor(0)
+        .setDepth(DEPTH_UI_CONTENT + 1);
+      g.lineStyle(1, 0x446688, 1);
+      g.strokeRect(8, y + rowH / 2 - 14, 40, 24);
+      g.lineBetween(8, y + rowH / 2 - 14, 48, y + rowH / 2 + 10);
+      g.lineBetween(48, y + rowH / 2 - 14, 8, y + rowH / 2 + 10);
+      this.bgPaletteObjs.push(g);
+    }
+
+    const label = this.add
+      .text(60, y + 10, entry ? entry.label : 'NONE', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#ccd6ea',
+        letterSpacing: 1,
+      })
+      .setScrollFactor(0)
+      .setDepth(DEPTH_UI_CONTENT + 1);
+    const sublabel = this.add
+      .text(60, y + 28, entry ? 'BACKGROUND' : 'NO BACKGROUND', {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: entry ? '#00ff99' : '#88aacc',
+      })
+      .setScrollFactor(0)
+      .setDepth(DEPTH_UI_CONTENT + 1);
+    this.bgPaletteObjs.push(label, sublabel);
+  }
+
+  /**
+   * Apply a background selection.
+   *   index === -1 → NONE (clears level.data.background)
+   *   index >= 0   → BACKGROUNDS[index]
+   * Writes data, rebuilds the in-world background, and re-partitions so
+   * the main camera picks up the new object.
+   */
+  private selectBg(index: number): void {
+    this.selectedBgIndex = index;
+    this.level.data.background = index >= 0 ? BACKGROUNDS[index].key : undefined;
+    this.rebuildBackground();
+    this.updateBgPaletteHilite();
+    this.markDirty();
+  }
+
+  private rebuildBackground(): void {
+    if (this.level.background) {
+      this.level.background.destroy();
+      this.level.background = undefined;
+    }
+    const bg = createBackground(
+      this,
+      this.level.data.background,
+      this.level.widthPx,
+      this.level.heightPx,
+    );
+    if (bg) {
+      this.worldLayer.add(bg);
+      this.level.background = bg;
+    }
+  }
+
+  private updateBgPaletteHilite(): void {
+    if (this.mode !== 'bg') {
+      this.bgPaletteHilite.setVisible(false);
+      return;
+    }
+    const rowH = 56;
+    const row  = this.selectedBgIndex + 1; // NONE is row 0
+    this.bgPaletteHilite.setPosition(4, CONTENT_TOP + row * rowH - 2);
+    this.bgPaletteHilite.setSize(PALETTE_WIDTH - 8, rowH);
+    this.bgPaletteHilite.setVisible(true);
+  }
+
   private buildHud(): void {
     this.infoText = this.add
       .text(DISPLAY.width - 8, 8, '', {
@@ -634,7 +795,7 @@ export class EditorScene extends Phaser.Scene {
 
     this.helpText = this.add
       .text(PALETTE_WIDTH + 8, DISPLAY.height - 4,
-        'T/Y MODE   LMB PLACE   RMB DELETE   SHIFT+LMB PALETTE=SOLID   ARROWS PAN   [ ] CYCLE   G GRID   S SAVE   R PLAY   E LOAD', {
+        'T/Y/B MODE   LMB PLACE   RMB DELETE   SHIFT+LMB PALETTE=SOLID   ARROWS PAN   [ ] CYCLE   G GRID   S SAVE   R PLAY   E LOAD', {
         fontFamily: 'monospace',
         fontSize:   '11px',
         color:      '#88aacc',
@@ -671,6 +832,7 @@ export class EditorScene extends Phaser.Scene {
     kb.on('keydown-G',   () => this.toggleGrid());
     kb.on('keydown-T',   () => this.setMode('tiles'));
     kb.on('keydown-Y',   () => this.setMode('enemies'));
+    kb.on('keydown-B',   () => this.setMode('bg'));
     kb.on('keydown-E',   () => this.exit());
     kb.on('keydown-R',   () => this.playtest());
     kb.on('keydown-ESC', () => this.deselectAndDisarm());
@@ -819,10 +981,12 @@ export class EditorScene extends Phaser.Scene {
     // Tab visuals
     const activeCol = '#00ff99';
     const idleCol   = '#446688';
-    this.tabTilesBg.setFillStyle(next === 'tiles'   ? 0x1e3050 : 0x142238);
+    this.tabTilesBg  .setFillStyle(next === 'tiles'   ? 0x1e3050 : 0x142238);
     this.tabEnemiesBg.setFillStyle(next === 'enemies' ? 0x1e3050 : 0x142238);
-    this.tabTilesTxt.setColor(next === 'tiles'   ? activeCol : idleCol);
+    this.tabBgBg     .setFillStyle(next === 'bg'      ? 0x1e3050 : 0x142238);
+    this.tabTilesTxt  .setColor(next === 'tiles'   ? activeCol : idleCol);
     this.tabEnemiesTxt.setColor(next === 'enemies' ? activeCol : idleCol);
+    this.tabBgTxt     .setColor(next === 'bg'      ? activeCol : idleCol);
 
     // TILES-mode objects
     const showTiles = next === 'tiles';
@@ -837,6 +1001,13 @@ export class EditorScene extends Phaser.Scene {
       (o as unknown as { setVisible: (v: boolean) => void }).setVisible(showEnemies);
     }
     this.enemyPaletteHilite.setVisible(false); // only shown when a row is armed
+
+    // BG-mode objects
+    const showBg = next === 'bg';
+    for (const o of this.bgPaletteObjs) {
+      (o as unknown as { setVisible: (v: boolean) => void }).setVisible(showBg);
+    }
+    this.updateBgPaletteHilite();
 
     this.refreshHud();
   }
@@ -1424,6 +1595,11 @@ export class EditorScene extends Phaser.Scene {
     if (this.armed?.kind === 'tile')     armedStr = `TILE ${this.armed.index.toString().padStart(3,'0')}`;
     else if (this.armed?.kind === 'enemy')   armedStr = `${this.armed.protoId} SOLO`.toUpperCase();
     else if (this.armed?.kind === 'spawner') armedStr = `${this.armed.protoId} SPAWN`.toUpperCase();
+    else if (this.mode === 'bg') {
+      armedStr = this.selectedBgIndex >= 0
+        ? BACKGROUNDS[this.selectedBgIndex].label
+        : 'NONE';
+    }
     this.infoText.setText(
       `[${this.levelName.toUpperCase()}]  ${modeStr}  ${armedStr}${dirtyFlag}`,
     );

@@ -42,6 +42,7 @@ export class PenguinBot extends Enemy {
       aggroRadius:      PENGUIN_BOT.aggroRadius,
       attackCooldownMs: PENGUIN_BOT.attackCooldownMs,
       health:           PENGUIN_BOT.health,
+      contactDamage:    PENGUIN_BOT.contactDamage,
     });
     this.setScale(PENGUIN_BOT.scale);
   }
@@ -129,10 +130,20 @@ export class PenguinBot extends Enemy {
   /**
    * Override: move directly toward the player whenever playerRef is set.
    * Falls back to the default bounce patrol when no player is assigned.
+   *
+   * Deadzone: when the player's x is within CHASE_DEADZONE px of ours (e.g.
+   * they climbed a ladder above us), stop instead of oscillating left/right
+   * around their column every frame.
    */
   protected patrol(): void {
     if (this.playerRef) {
-      const goRight = this.playerRef.x > this.x;
+      const dx = this.playerRef.x - this.x;
+      const CHASE_DEADZONE = 8;
+      if (Math.abs(dx) < CHASE_DEADZONE) {
+        this.arcadeBody.setVelocityX(0);
+        return;
+      }
+      const goRight = dx > 0;
       this.setFacing(goRight);
       this.arcadeBody.setVelocityX(goRight ? this.cfg.speed : -this.cfg.speed);
     } else {

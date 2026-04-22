@@ -2,12 +2,15 @@
   "name": "TestLevel",
   "tileWidth": 16,
   "tileHeight": 16,
-  "displayScale": 2,
+  "displayScale": 1,
   "widthTiles": 60,
   "heightTiles": 17,
   "tileset": "castle",
   "background": "castle_bg",
   "solidTiles": [],
+  "ladderTiles": [
+    36
+  ],
   "layers": {
     "ground": [
       [
@@ -771,7 +774,7 @@
         -1,
         -1,
         -1,
-        -1,
+        36,
         -1,
         -1,
         -1,
@@ -833,7 +836,7 @@
         -1,
         -1,
         -1,
-        -1,
+        36,
         -1,
         -1,
         -1,
@@ -957,7 +960,7 @@
         65,
         65,
         65,
-        65,
+        36,
         65,
         65,
         65,
@@ -1066,7 +1069,15 @@
       ]
     ]
   },
-  "enemies": [],
+  "enemies": [
+    {
+      "id": "e_mo84xjsg_1",
+      "type": "toxic_barrel_bot",
+      "x": 304,
+      "y": 432,
+      "health": 4
+    }
+  ],
   "spawners": [
     {
       "id": "s_mo4ukdzv_1",

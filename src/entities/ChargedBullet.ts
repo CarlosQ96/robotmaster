@@ -35,6 +35,8 @@ export class ChargedBullet extends Phaser.Physics.Arcade.Sprite {
     // Match PLAYER.scale for visually-consistent sprite sizes.  Body size
     // stays in source pixels — Phaser scales it with the sprite.
     this.setScale(PLAYER.scale);
+    // Sub-pixel snap — prevents trailing-pixel line at fractional scales.
+    (this as unknown as { vertexRoundMode: string }).vertexRoundMode = 'safe';
 
     const cfg = CFG[bulletType];
     const b = this.arcadeBody;

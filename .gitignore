@@ -4,3 +4,6 @@
 **/.vercel/
 **/.next/
 *.zip
+.env
+.env.local
+.env.*.local

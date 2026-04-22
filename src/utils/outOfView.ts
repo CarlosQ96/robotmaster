@@ -47,3 +47,38 @@ export function cullOffscreen<T extends Phaser.GameObjects.GameObject>(
     }
   }
 }
+
+/**
+ * Kill every active projectile in `group` whose arcade body is currently
+ * blocked on any side — i.e. in contact with geometry.  Use as a robust
+ * fallback to collider callbacks for straight-line projectiles that
+ * should disappear on any wall / tile hit, regardless of which side
+ * of the collision Phaser invokes the callback from.
+ *
+ * Members are expected to have an arcade body (Phaser.Physics.Arcade.Sprite)
+ * and a `kill()` method.
+ */
+export function killBlockedProjectiles(
+  group: Phaser.GameObjects.Group,
+): void {
+  for (const child of group.getChildren()) {
+    if (!child.active) continue;
+    const body = (child as unknown as { body?: Phaser.Physics.Arcade.Body }).body;
+    if (!body || !body.enable) continue;
+    const blocked = body.blocked;
+    const touching = body.touching;
+    if (
+      blocked.left  || blocked.right || blocked.up  || blocked.down ||
+      touching.left || touching.right || touching.up || touching.down
+    ) {
+      // Prefer impact() if the projectile exposes one — plays a short
+      // burst FX before killing.  Falls back to kill() for plain bullets.
+      const proj = child as unknown as {
+        impact?: () => void;
+        kill?:   () => void;
+      };
+      if (proj.impact) proj.impact();
+      else             proj.kill?.();
+    }
+  }
+}

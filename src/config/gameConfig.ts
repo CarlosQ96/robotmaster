@@ -76,7 +76,7 @@ export const PLAYER = {
    * Bullets, enemies, and enemy projectiles all track this value so sprite
    * sizes stay consistent — see PENGUIN_BOT.scale, Bullet.ts, ChargedBullet.ts.
    */
-  scale: 1.75,
+  scale: 1,
 
   /**
    * Standing arcade body (LOCAL / pre-scale pixels, measured from actual PNG).
@@ -106,6 +106,9 @@ export const PLAYER = {
 
   /** Horizontal walk/run speed in world px/s */
   speed: 200,
+
+  /** Vertical ladder-climb speed in world px/s (both up and down). */
+  climbSpeed: 140,
 
   /** Slide speed in world px/s — higher = longer distance (duration set by animConfig slide.frameRate) */
   slideSpeed: 480,

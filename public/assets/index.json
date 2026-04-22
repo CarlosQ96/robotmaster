@@ -33,6 +33,20 @@
         "imageWidth": 1200,
         "imageHeight": 48
       },
+      "robot_player_idle_16x16": {
+        "key": "robot_player_idle_16x16",
+        "path": "assets/player/Robot_Player_Idle_16x16.png",
+        "type": "image",
+        "imageWidth": 16,
+        "imageHeight": 16,
+        "palette": [
+          "#15181f",
+          "#e2ecee",
+          "#3f97e8",
+          "#f5c730"
+        ],
+        "note": "Transparent background; four visible colors."
+      },
       "projectile_small": {
         "key": "projectile_small",
         "path": "assets/player/Playable_Projectile_Small.png",

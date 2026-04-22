@@ -76,6 +76,8 @@ export interface LevelData {
   heightTiles:  number;
   tileset:      string;            // matches the image key (e.g. 'tileset-castle')
   solidTiles:   number[];          // tile indices that participate in collision
+  /** Tile indices that the player can climb.  Do NOT collide the player. */
+  ladderTiles?: number[];
   layers:       Record<string, number[][]>;
   /** Optional image cache key rendered behind the ground layer (scrolls with
    *  a 0.3 parallax factor).  Set to the same key used in this.load.image. */
@@ -86,14 +88,88 @@ export interface LevelData {
   spawners?:    SpawnerPlacement[];
 }
 
+/**
+ * Either a stretched full-world Image (background ≥ world dims) or a
+ * TileSprite that tiles a smaller source image across the world with
+ * horizontal/vertical parallax (see createBackground).
+ */
+export type BackgroundObject =
+  | Phaser.GameObjects.Image
+  | Phaser.GameObjects.TileSprite;
+
 export interface LoadedLevel {
   data:          LevelData;
   map:           Phaser.Tilemaps.Tilemap;
   tileset:       Phaser.Tilemaps.Tileset;
   groundLayer:   Phaser.Tilemaps.TilemapLayer;
-  background?:   Phaser.GameObjects.Image;
+  background?:   BackgroundObject;
   widthPx:       number;           // world width in pixels (post-scale)
   heightPx:      number;
+  /** Tile indices the player can climb (from LevelData.ladderTiles ?? []). */
+  ladderTiles:   number[];
+}
+
+/**
+ * Build the background game object for a level.
+ *
+ *   - Image ≥ world in both axes → stretch to world, scrollFactor 0.3
+ *     (original behavior: one backdrop spans the whole level with mild
+ *     parallax).
+ *   - Image < world in either axis → TileSprite locked to the camera,
+ *     texture scrolled via `tilePositionX/Y` at 0.5 × camera scroll for
+ *     true parallax tiling of small art across a large world.
+ *
+ * Returns undefined if the key is missing or the texture isn't loaded —
+ * caller decides whether to fall back.
+ */
+export function createBackground(
+  scene:    Phaser.Scene,
+  bgKey:    string | undefined,
+  widthPx:  number,
+  heightPx: number,
+): BackgroundObject | undefined {
+  if (!bgKey || !scene.textures.exists(bgKey)) return undefined;
+
+  const src  = scene.textures.get(bgKey).getSourceImage(0) as {
+    width?: number; height?: number;
+  };
+  const imgW = src.width  ?? widthPx;
+  const imgH = src.height ?? heightPx;
+
+  if (imgW < widthPx || imgH < heightPx) {
+    // Small art → TileSprite that covers the camera viewport.  The texture
+    // is scaled up to fill the camera height (tileScale preserves aspect),
+    // then tiles horizontally only.  scrollFactor=0 locks the sprite to the
+    // viewport; tilePositionX is driven from camera scrollX so the tiled
+    // texture parallaxes across the world without ever "running out" of
+    // art at world edges.  No vertical parallax — the image already fills
+    // the view top-to-bottom.
+    const cam = scene.cameras.main;
+    const ts = scene.add
+      .tileSprite(0, 0, cam.width, cam.height, bgKey)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(-1);
+    const tileScale = cam.height / imgH;
+    ts.setTileScale(tileScale, tileScale);
+    const onUpdate = () => {
+      ts.tilePositionX = scene.cameras.main.scrollX * 0.5;
+    };
+    scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
+    // Must detach on destroy — rebuildBackground in the editor churns
+    // these, and scene events survive game-object death.
+    ts.once(Phaser.GameObjects.Events.DESTROY, () => {
+      scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate);
+    });
+    return ts;
+  }
+
+  return scene.add
+    .image(0, 0, bgKey)
+    .setOrigin(0, 0)
+    .setDisplaySize(widthPx, heightPx)
+    .setScrollFactor(0.3)
+    .setDepth(-1);
 }
 
 /**
@@ -112,20 +188,9 @@ export function loadTilemap(
   const widthPx  = widthTiles  * tileWidth  * displayScale;
   const heightPx = heightTiles * tileHeight * displayScale;
 
-  // Optional background — stretched to fill the world so the scene (sky,
-  // mountains, etc.) reads once end-to-end without visual tiling seams.
-  // Mild parallax (scrollFactor 0.3) gives depth as the camera follows the
-  // player.  Scaling up pixel art is lossless with nearest-neighbour filtering
-  // (see main.ts antialias:false).
-  let background: Phaser.GameObjects.Image | undefined;
-  if (data.background && scene.textures.exists(data.background)) {
-    background = scene.add
-      .image(0, 0, data.background)
-      .setOrigin(0, 0)
-      .setDisplaySize(widthPx, heightPx)
-      .setScrollFactor(0.3)
-      .setDepth(-1);
-  }
+  // Optional background — createBackground picks stretched vs parallax-tiling
+  // based on the source image's natural size vs the world dimensions.
+  const background = createBackground(scene, data.background, widthPx, heightPx);
 
   // Build a blank tilemap and copy ground-layer indices into it.
   const map = scene.make.tilemap({
@@ -156,8 +221,13 @@ export function loadTilemap(
   }
 
   // Collision: mark the declared solid tiles so Arcade physics separates on them.
-  if (data.solidTiles.length > 0) {
-    groundLayer.setCollision(data.solidTiles);
+  // Ladder tiles are explicitly NOT collided — even if the author accidentally
+  // put a ladder index in solidTiles, the player must be able to walk through
+  // them to climb.
+  const ladderTiles = data.ladderTiles ?? [];
+  const solids = data.solidTiles.filter((idx) => !ladderTiles.includes(idx));
+  if (solids.length > 0) {
+    groundLayer.setCollision(solids);
   }
 
   return {
@@ -168,6 +238,7 @@ export function loadTilemap(
     background,
     widthPx,
     heightPx,
+    ladderTiles,
   };
 }
 
@@ -187,7 +258,7 @@ export function blankLevel(params: {
 }): LevelData {
   const tileWidth   = params.tileWidth   ?? 16;
   const tileHeight  = params.tileHeight  ?? 16;
-  const displayScale = params.displayScale ?? 2;
+  const displayScale = params.displayScale ?? 1;
   const ground: number[][] = [];
   for (let y = 0; y < params.heightTiles; y++) {
     ground.push(new Array(params.widthTiles).fill(-1));

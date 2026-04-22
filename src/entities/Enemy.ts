@@ -30,6 +30,14 @@ export interface EnemyCfg {
   aggroRadius:      number;   // world px; set 0 to disable auto-aggro
   attackCooldownMs: number;
   health:           number;
+  /** Damage dealt on body contact with the player (default 1). */
+  contactDamage?:   number;
+  /**
+   * Multiplier applied to the default hurt-state knockback impulse
+   * (both X and Y).  Default 1 (normal knockback).  Set to 0 to disable
+   * knockback entirely — used by stationary bosses that shouldn't flinch.
+   */
+  hurtKnockback?:   number;
 }
 
 export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -72,6 +80,13 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
+    // Phaser 4 per-object pixel snap.  Non-integer render scales (we use 1.75)
+    // can bleed the edge row of an adjacent spritesheet frame into the
+    // current frame — that's the "phantom trail" behind the walrus when it
+    // moves.  'safe' rounds quad vertices to whole pixels without touching
+    // rotation / scale math.
+    (this as unknown as { vertexRoundMode: string }).vertexRoundMode = 'safe';
+
     const b = this.arcadeBody;
     b.setAllowGravity(true);
     b.setCollideWorldBounds(true);
@@ -94,7 +109,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Body offsetX measured when facing LEFT (unflipped). */
-  private baseOffsetX = 0;
+  protected baseOffsetX = 0;
 
   // ── Abstract ─────────────────────────────────────────────────────────────
 
@@ -179,6 +194,9 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   get currentState(): EnemyState { return this.enemyState; }
 
+  /** Damage this enemy deals on body contact with the player. */
+  get contactDamage(): number { return this.cfg.contactDamage ?? 1; }
+
   get arcadeBody(): Phaser.Physics.Arcade.Body {
     return this.body as Phaser.Physics.Arcade.Body;
   }
@@ -201,10 +219,12 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.setTintMode(Phaser.TintModes.FILL);
       this.setTint(0xff0000);
       // Knockback impulse — hurt state locks the update() loop, so the patrol
-      // velocity won't overwrite this until hurtTimer expires.
+      // velocity won't overwrite this until hurtTimer expires.  `hurtKnockback`
+      // cfg scales the default impulse; 0 disables knockback (stationary bosses).
+      const kb = this.cfg.hurtKnockback ?? 1;
       this.arcadeBody.setVelocity(
-        this.hurtKnockbackDir * Enemy.HURT_KNOCKBACK_X,
-        Enemy.HURT_KNOCKBACK_Y,
+        this.hurtKnockbackDir * Enemy.HURT_KNOCKBACK_X * kb,
+        Enemy.HURT_KNOCKBACK_Y * kb,
       );
     }
     if (next === 'dead') {
