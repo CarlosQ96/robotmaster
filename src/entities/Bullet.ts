@@ -17,6 +17,7 @@
  */
 import * as Phaser from 'phaser';
 import { PLAYER, PROJECTILE } from '../config/gameConfig';
+import type { ProjectileSyncState } from './RemoteProjectile';
 
 /** Off-screen parking coordinate for killed bullets (body remains in tree). */
 const POOL_PARK = -10000;
@@ -77,5 +78,24 @@ export class Bullet extends Phaser.Physics.Arcade.Sprite {
     b.setVelocity(0, 0);
     b.enable = false;
     b.reset(POOL_PARK, POOL_PARK);
+  }
+
+  /**
+   * Snapshot for network broadcast.  Only meaningful while the bullet is
+   * active — the host filters inactive bullets out of the outgoing snapshot.
+   */
+  getSyncState(): ProjectileSyncState {
+    return {
+      type:       'small',
+      textureKey: 'bullet_small',
+      x:          this.x,
+      y:          this.y,
+      flipX:      this.flipX,
+      rotation:   this.rotation,
+      animKey:    this.anims.currentAnim?.key ?? '',
+      alpha:      this.alpha,
+      visible:    this.visible,
+      scale:      this.scaleX,
+    };
   }
 }

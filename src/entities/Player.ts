@@ -40,6 +40,7 @@ import * as Phaser from 'phaser';
 import { PLAYER, PROJECTILE } from '../config/gameConfig';
 import { PLAYER_ANIMS, ANIM_KEY } from '../config/animConfig';
 import { getAudio } from '../audio/AudioManager';
+import type { PlayerSyncState } from './RemotePlayer';
 
 /** Event emitted on every shot. GymScene listens and spawns the right bullet. */
 export interface ShootEvent {
@@ -47,6 +48,26 @@ export interface ShootEvent {
   y: number;
   facingRight: boolean;
   type: 'small' | 'charged' | 'full_charged';
+}
+
+/**
+ * Per-frame input snapshot handed to `Player.update()`.  Solo mode leaves
+ * this undefined so Player falls back to the internal keyboard read.
+ * Multiplayer scenes provide it for remote-controlled Player simulations.
+ *
+ * Edge events (*JustPressed / *JustReleased) MUST be computed by the caller
+ * (keyboard source uses Phaser.JustDown/JustUp; network source compares
+ * current vs previous buttons bitfield).
+ */
+export interface PlayerInput {
+  left:              boolean;
+  right:             boolean;
+  up:                boolean;
+  down:              boolean;
+  shootHeld:         boolean;
+  shootJustReleased: boolean;
+  jumpJustPressed:   boolean;
+  slideJustPressed:  boolean;
 }
 
 export type PlayerState =
@@ -152,6 +173,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   get arcadeBody(): Phaser.Physics.Arcade.Body {
     return this.body as Phaser.Physics.Arcade.Body;
+  }
+
+  /**
+   * Snapshot every attribute a RemotePlayer needs to render an identical
+   * frame on another peer.  Read-only — the host calls this once per
+   * broadcast tick and writes the result into its outgoing packet.
+   */
+  getSyncState(): PlayerSyncState {
+    return {
+      x:        this.x,
+      y:        this.y,
+      flipX:    this.flipX,
+      animKey:  this.anims.currentAnim?.key ?? '',
+      alpha:    this.alpha,
+      tint:     this.tintTopLeft,
+      tintMode: (this as unknown as { tintFill: boolean }).tintFill
+        ? Phaser.TintModes.FILL
+        : Phaser.TintModes.MULTIPLY,
+      visible:  this.visible,
+      hp:       this._health,
+      stateTag: this.playerState,
+    };
   }
 
   // ── Constructor ──────────────────────────────────────────────────────────
@@ -540,8 +583,29 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.syncBodyOffset();
   }
 
+  // ── Input reading (keyboard source) ──────────────────────────────────────
+  /** Build a PlayerInput from this Player's own keyboard keys.  Called once
+   *  per frame when no network input override is passed to `update()`. */
+  private readKeyboardInput(): PlayerInput {
+    return {
+      left:              this.cursors.left.isDown,
+      right:             this.cursors.right.isDown,
+      up:                this.cursors.up.isDown,
+      down:              this.cursors.down.isDown,
+      shootHeld:         this.shootKey.isDown,
+      shootJustReleased: Phaser.Input.Keyboard.JustUp(this.shootKey),
+      jumpJustPressed:   Phaser.Input.Keyboard.JustDown(this.jumpKey),
+      slideJustPressed:  Phaser.Input.Keyboard.JustDown(this.slideKey),
+    };
+  }
+
   // ── Per-frame update ─────────────────────────────────────────────────────
-  update(delta: number): void {
+  /**
+   * Advance the simulation one frame.  `inputOverride` is used by
+   * multiplayer scenes to feed network-supplied input; solo + host-owned
+   * players leave it undefined and read from the keyboard directly.
+   */
+  update(delta: number, inputOverride?: PlayerInput): void {
 
     // ── Invuln blink ──────────────────────────────────────────────────────
     if (this.invulnTimer > 0) {
@@ -570,15 +634,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const body     = this.arcadeBody;
     const onGround = body.blocked.down;
 
-    const goLeft  = this.cursors.left.isDown;
-    const goRight = this.cursors.right.isDown;
-    const goDown  = this.cursors.down.isDown;
-
-    const goUp          = this.cursors.up.isDown;
-    const jumpPressed   = Phaser.Input.Keyboard.JustDown(this.jumpKey);
-    const shootHeld     = this.shootKey.isDown;
-    const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey);
-    const slideTapped   = Phaser.Input.Keyboard.JustDown(this.slideKey);
+    // Pull from network override when provided (multiplayer remote player);
+    // otherwise read keyboard directly (solo + host-owned player).
+    const input         = inputOverride ?? this.readKeyboardInput();
+    const goLeft        = input.left;
+    const goRight       = input.right;
+    const goDown        = input.down;
+    const goUp          = input.up;
+    const jumpPressed   = input.jumpJustPressed;
+    const shootHeld     = input.shootHeld;
+    const shootReleased = input.shootJustReleased;
+    const slideTapped   = input.slideJustPressed;
 
     // ── Z / charge (background — runs every frame, independent of movement) ─
     //

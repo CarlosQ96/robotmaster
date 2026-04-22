@@ -72,4 +72,20 @@ export class ToxicGoopShot extends Phaser.Physics.Arcade.Sprite {
     puff.play('walrus_shoot_fx');
     this.kill();
   }
+
+  /** Snapshot for network broadcast (host-only). */
+  getSyncState() {
+    return {
+      type:       'toxic_goop' as const,
+      textureKey: 'toxic_goop',
+      x:          this.x,
+      y:          this.y,
+      flipX:      this.flipX,
+      rotation:   this.rotation,
+      animKey:    this.anims.currentAnim?.key ?? '',
+      alpha:      this.alpha,
+      visible:    this.visible,
+      scale:      this.scaleX,
+    };
+  }
 }

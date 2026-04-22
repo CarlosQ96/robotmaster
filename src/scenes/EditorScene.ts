@@ -38,6 +38,8 @@ import {
   type EnemyPlacement,
   type SpawnerPlacement,
 } from '../utils/TilemapLoader';
+import { publishMap as uploadMapToUgc } from '../net/mapPublisher';
+import { WavedashBridge } from '../net/WavedashBridge';
 import {
   TILESETS,
   ENEMY_PROTOTYPES,
@@ -847,7 +849,7 @@ export class EditorScene extends Phaser.Scene {
 
     this.helpText = this.add
       .text(PALETTE_WIDTH + 8, DISPLAY.height - 4,
-        'T/Y/B MODE   LMB PLACE   RMB DELETE   HOLD Z + LMB PALETTE=SOLID   ARROWS PAN   [ ] CYCLE   G GRID   S SAVE   R PLAY   E LOAD', {
+        'T/Y/B MODE   LMB PLACE   RMB DELETE   HOLD Z + LMB PALETTE=SOLID   [ ] CYCLE   G GRID   S SAVE   R PLAY   U PUBLISH   E LEVELS   M MENU', {
         fontFamily: 'monospace',
         fontSize:   '11px',
         color:      '#88aacc',
@@ -856,6 +858,42 @@ export class EditorScene extends Phaser.Scene {
       .setOrigin(0, 1)
       .setScrollFactor(0)
       .setDepth(DEPTH_UI_CONTENT);
+
+    // Multiplayer-publish hint — pinned inside the sidebar so users discover
+    // the shortcut without parsing the dense bottom hint bar.  Sits just
+    // above the bottom edge so it doesn't cover the palette.
+    this.add
+      .rectangle(
+        4,
+        DISPLAY.height - 68,
+        PALETTE_WIDTH - 8,
+        54,
+        0x15233a,
+        0.95,
+      )
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, 0x00ff99, 0.6)
+      .setScrollFactor(0)
+      .setDepth(DEPTH_UI_BG);
+
+    this.add.text(12, DISPLAY.height - 62, 'MULTIPLAYER', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#00ff99',
+      letterSpacing: 2,
+    }).setScrollFactor(0).setDepth(DEPTH_UI_CONTENT);
+
+    this.add.text(
+      12,
+      DISPLAY.height - 48,
+      'S = SAVE · U = PUBLISH\nPublish to share this map\nwith other lobby players.',
+      {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#aabbcc',
+        lineSpacing: 2,
+      },
+    ).setScrollFactor(0).setDepth(DEPTH_UI_CONTENT);
 
     this.refreshHud();
   }
@@ -886,7 +924,9 @@ export class EditorScene extends Phaser.Scene {
     kb.on('keydown-Y',   () => this.setMode('enemies'));
     kb.on('keydown-B',   () => this.setMode('bg'));
     kb.on('keydown-E',   () => this.exit());
+    kb.on('keydown-M',   () => this.exitToMainMenu());   // M = main menu
     kb.on('keydown-R',   () => this.playtest());
+    kb.on('keydown-U',   () => this.publishMap());  // 'U' = UGC / Upload
     kb.on('keydown-ESC', () => this.deselectAndDisarm());
     kb.on('keydown-OPEN_BRACKET',   () => this.cycleSelection(-1));
     kb.on('keydown-CLOSED_BRACKET', () => this.cycleSelection(+1));
@@ -1475,6 +1515,37 @@ export class EditorScene extends Phaser.Scene {
     }
   }
 
+  // ── Publish to multiplayer (UGC upload) ─────────────────────────────────
+  /**
+   * Upload the current level as Wavedash UGC so other players can pick it
+   * when hosting a lobby.  Requires the SDK; no-ops with a status toast when
+   * running locally without the platform injection.  Auto-saves first so
+   * the published version matches what's on screen.
+   */
+  private async publishMap(): Promise<void> {
+    if (!WavedashBridge.isPresent()) {
+      this.showStatus('PUBLISH REQUIRES WAVEDASH (run from platform)', '#ff3344');
+      return;
+    }
+    if (this.dirty) {
+      await this.saveLevel();
+      if (this.dirty) return;  // save failed — showStatus already reported
+    }
+    this.showStatus('PUBLISHING...', '#ffcc00');
+    const title = this.level.data.name;
+    const id = await uploadMapToUgc(
+      this.level.data,
+      title,
+      'Map published from Robot Lords editor',
+      'public',
+    );
+    if (id) {
+      this.showStatus(`PUBLISHED — UGC ${id.slice(0, 8)}...`, '#00ff99');
+    } else {
+      this.showStatus('PUBLISH FAILED — see console', '#ff3344');
+    }
+  }
+
   // ── Save / Exit ─────────────────────────────────────────────────────────
   private async saveLevel(): Promise<void> {
     this.showStatus('SAVING...', '#ffcc00');
@@ -1501,6 +1572,18 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
     this.scene.start('LevelPickerScene');
+  }
+
+  /** Skip the level picker and return straight to the title screen.  Same
+   *  unsaved-changes guard as `exit()` — first press warns, second press
+   *  confirms discard. */
+  private exitToMainMenu(): void {
+    if (this.dirty) {
+      this.showStatus('UNSAVED — PRESS S TO SAVE, M AGAIN TO DISCARD', '#ff3344');
+      this.dirty = false;
+      return;
+    }
+    this.scene.start('TitleScene');
   }
 
   /**

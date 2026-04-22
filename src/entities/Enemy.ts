@@ -22,6 +22,7 @@
  *   patrol()               — custom movement (default: horizontal bounce in bounds)
  */
 import * as Phaser from 'phaser';
+import type { EnemySyncState } from './RemoteEnemy';
 
 export type EnemyState = 'idle' | 'walk' | 'attack' | 'hurt' | 'dead';
 
@@ -51,7 +52,19 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   protected patrolLeft  = 0;
   protected patrolRight = 0;
 
+  /**
+   * Current aggro target.  In single-player this always equals the one
+   * player passed to setPlayer().  In multiplayer setPlayers(...) provides
+   * N candidates and updateTarget() picks the nearest inside aggroRadius;
+   * the selection is sticky (keeps the current target until they leave
+   * aggroRadius × TARGET_HYSTERESIS) so enemies don't flip-flop between
+   * equidistant players.
+   */
   protected playerRef?: Phaser.Physics.Arcade.Sprite;
+  private   allPlayers: Phaser.Physics.Arcade.Sprite[] = [];
+  /** How far past aggroRadius an existing target can drift before we let
+   *  them go.  1.5 = "50% further than aggroRadius" — prevents chatter. */
+  private static readonly TARGET_HYSTERESIS = 1.5;
 
   private attackCooldownTimer = 0;
   private hurtTimer = 0;
@@ -165,10 +178,54 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   // ── Public API ───────────────────────────────────────────────────────────
 
-  /** Provide the player sprite so this enemy can track/aggro it. */
+  /** Provide the single player sprite so this enemy can track/aggro it.
+   *  Single-player convenience — MP callers should use setPlayers(). */
   setPlayer(player: Phaser.Physics.Arcade.Sprite): this {
-    this.playerRef = player;
+    this.allPlayers = [player];
+    this.playerRef  = player;
     return this;
+  }
+
+  /** Multiplayer entry point.  Accept every possible aggro target; the
+   *  enemy picks the nearest each tick (sticky via hysteresis). */
+  setPlayers(players: Phaser.Physics.Arcade.Sprite[]): this {
+    this.allPlayers = players.slice();
+    this.playerRef  = players[0];
+    return this;
+  }
+
+  /** Recompute `playerRef` from `allPlayers` — called once per update.
+   *  Locks onto the nearest player within aggroRadius; keeps the existing
+   *  target while they stay inside aggroRadius × TARGET_HYSTERESIS. */
+  private updateTarget(): void {
+    if (this.allPlayers.length <= 1) return;
+    const r   = this.cfg.aggroRadius;
+    if (r <= 0) return;
+    const r2  = r * r;
+    const hy2 = (r * Enemy.TARGET_HYSTERESIS) * (r * Enemy.TARGET_HYSTERESIS);
+
+    const d2To = (p: Phaser.Physics.Arcade.Sprite): number => {
+      const dx = this.x - p.x;
+      const dy = this.y - p.y;
+      return dx * dx + dy * dy;
+    };
+
+    // Sticky: keep current target while they stay inside the hysteresis
+    // band.  Active, visible, not destroyed — otherwise fall through.
+    if (this.playerRef && this.playerRef.active && d2To(this.playerRef) <= hy2) {
+      return;
+    }
+
+    let best: Phaser.Physics.Arcade.Sprite | undefined;
+    let bestD2 = Infinity;
+    for (const p of this.allPlayers) {
+      if (!p.active) continue;
+      const d2 = d2To(p);
+      if (d2 < bestD2) { bestD2 = d2; best = p; }
+    }
+    // Only acquire a new target if they're inside the (non-hysteresis)
+    // aggroRadius.  Outside that, clear target so patrol resumes.
+    this.playerRef = best && bestD2 <= r2 ? best : undefined;
   }
 
   /** Set explicit patrol bounds (world px). Fluent. */
@@ -199,6 +256,32 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   get arcadeBody(): Phaser.Physics.Arcade.Body {
     return this.body as Phaser.Physics.Arcade.Body;
+  }
+
+  /**
+   * Snapshot for network broadcast.  Consumed by `RemoteEnemy.applyState()`.
+   * `enemyType` must be filled in by the subclass-level snapshot builder in
+   * the scene (we store the texture key as a proxy here — subclasses like
+   * PenguinBot set `textureKey === 'penguin_bot'`, which doubles as the
+   * catalog type id across the codebase).
+   */
+  getSyncState(): EnemySyncState {
+    return {
+      enemyType: this.texture.key,
+      scale:     this.scaleX,
+      x:         this.x,
+      y:         this.y,
+      flipX:     this.flipX,
+      animKey:   this.anims.currentAnim?.key ?? '',
+      alpha:     this.alpha,
+      tint:      this.tintTopLeft,
+      tintMode:  (this as unknown as { tintFill: boolean }).tintFill
+        ? Phaser.TintModes.FILL
+        : Phaser.TintModes.MULTIPLY,
+      visible:   this.visible,
+      hp:        this._health,
+      stateTag:  this.enemyState,
+    };
   }
 
   // ── State machine ────────────────────────────────────────────────────────
@@ -258,6 +341,11 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   update(delta: number): void {
     if (this.enemyState === 'dead') return;
+
+    // Per-player aggro selection — picks the nearest player once per tick
+    // with sticky hysteresis so enemies don't oscillate between targets.
+    // No-op when only one player is registered (single-player path).
+    this.updateTarget();
 
     // Timers
     if (this.attackCooldownTimer > 0) this.attackCooldownTimer -= delta;

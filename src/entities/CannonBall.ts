@@ -136,4 +136,20 @@ export class CannonBall extends Phaser.Physics.Arcade.Sprite {
   impact(): void {
     this.kill();
   }
+
+  /** Snapshot for network broadcast (host-only). */
+  getSyncState() {
+    return {
+      type:       'cannon_ball' as const,
+      textureKey: 'cannon_ball',
+      x:          this.x,
+      y:          this.y,
+      flipX:      this.flipX,
+      rotation:   this.rotation,
+      animKey:    this.anims.currentAnim?.key ?? '',
+      alpha:      this.alpha,
+      visible:    this.visible,
+      scale:      this.scaleX,
+    };
+  }
 }

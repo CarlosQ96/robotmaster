@@ -161,4 +161,20 @@ export class PenguinBomb extends Phaser.Physics.Arcade.Sprite {
   get arcadeBody(): Phaser.Physics.Arcade.Body {
     return this.body as Phaser.Physics.Arcade.Body;
   }
+
+  /** Snapshot for network broadcast (host-only). */
+  getSyncState() {
+    return {
+      type:       'penguin_bomb' as const,
+      textureKey: 'penguin_bot_bomb',
+      x:          this.x,
+      y:          this.y,
+      flipX:      this.flipX,
+      rotation:   this.rotation,
+      animKey:    this.anims.currentAnim?.key ?? '',
+      alpha:      this.alpha,
+      visible:    this.visible,
+      scale:      this.scaleX,
+    };
+  }
 }

@@ -80,4 +80,20 @@ export class JetpackBullet extends Phaser.Physics.Arcade.Sprite {
     puff.play('jetpack_shoot_fx');
     this.kill();
   }
+
+  /** Snapshot for network broadcast (host-only). */
+  getSyncState() {
+    return {
+      type:       'jetpack_bullet' as const,
+      textureKey: 'jetpack_bullet',
+      x:          this.x,
+      y:          this.y,
+      flipX:      this.flipX,
+      rotation:   this.rotation,
+      animKey:    this.anims.currentAnim?.key ?? '',
+      alpha:      this.alpha,
+      visible:    this.visible,
+      scale:      this.scaleX,
+    };
+  }
 }

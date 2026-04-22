@@ -14,6 +14,19 @@ import { GymScene } from './scenes/GymScene';
 import { LevelPickerScene } from './scenes/LevelPickerScene';
 import { EditorScene } from './scenes/EditorScene';
 import { PlayScene } from './scenes/PlayScene';
+import { LobbyBrowserScene } from './scenes/LobbyBrowserScene';
+import { LobbyScene } from './scenes/LobbyScene';
+import { PublicLobbyListScene } from './scenes/PublicLobbyListScene';
+import { MpPlayScene } from './scenes/MpPlayScene';
+import { MpGymScene } from './scenes/MpGymScene';
+import { WavedashBridge } from './net/WavedashBridge';
+import { maybeInstallDevShim } from './net/wavedashDevShim';
+
+// Install the local multiplayer shim when the real Wavedash SDK isn't
+// injected.  Lets two `vite dev` browser tabs find each other via
+// BroadcastChannel + localStorage for hackathon iteration.  Skipped
+// automatically when the real SDK is present.
+maybeInstallDevShim();
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,           // WebGL-first — Phaser 4 default
@@ -46,7 +59,27 @@ const config: Phaser.Types.Core.GameConfig = {
     },
   },
 
-  scene: [BootScene, TitleScene, CharacterSelectScene, GymScene, LevelPickerScene, EditorScene, PlayScene],
+  scene: [
+    BootScene,
+    TitleScene,
+    CharacterSelectScene,
+    GymScene,
+    LevelPickerScene,
+    EditorScene,
+    PlayScene,
+    LobbyBrowserScene,
+    LobbyScene,
+    PublicLobbyListScene,
+    MpPlayScene,
+    MpGymScene,
+  ],
 };
+
+// Kick off Wavedash SDK init in parallel with Phaser boot.  The bridge is
+// idempotent and returns `false` cleanly when the SDK isn't injected (i.e.
+// local `vite dev` without the platform wrapper), so solo mode keeps working.
+// We don't await here — subsequent scenes call `WavedashBridge.isReady()`
+// if they need the result.
+WavedashBridge.init();
 
 new Phaser.Game(config);

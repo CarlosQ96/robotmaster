@@ -6,6 +6,7 @@
  */
 import * as Phaser from 'phaser';
 import { PLAYER, PROJECTILE } from '../config/gameConfig';
+import type { ProjectileSyncState } from './RemoteProjectile';
 
 export type ChargedBulletType = 'charged' | 'full_charged';
 
@@ -74,5 +75,22 @@ export class ChargedBullet extends Phaser.Physics.Arcade.Sprite {
     b.setVelocity(0, 0);
     b.enable = false;
     b.reset(POOL_PARK, POOL_PARK);
+  }
+
+  /** Snapshot for network broadcast. */
+  getSyncState(): ProjectileSyncState {
+    const type = this.bulletType;
+    return {
+      type,
+      textureKey: type === 'charged' ? 'bullet_charged' : 'bullet_full_charged',
+      x:          this.x,
+      y:          this.y,
+      flipX:      this.flipX,
+      rotation:   this.rotation,
+      animKey:    this.anims.currentAnim?.key ?? '',
+      alpha:      this.alpha,
+      visible:    this.visible,
+      scale:      this.scaleX,
+    };
   }
 }

@@ -22,9 +22,9 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { label: 'TRAINING GYM', destination: 'GymScene',    available: true  },
-  { label: 'MAIN GAME',    destination: 'GameScene',   available: false },
-  { label: 'LEVEL EDITOR', destination: 'LevelPickerScene', available: true  },
+  { label: 'TRAINING GYM', destination: 'GymScene',           available: true  },
+  { label: 'MULTIPLAYER',  destination: 'LobbyBrowserScene',  available: true  },
+  { label: 'LEVEL EDITOR', destination: 'LevelPickerScene',   available: true  },
 ];
 
 const STYLE_BASE: Phaser.Types.GameObjects.Text.TextStyle = {
@@ -168,9 +168,12 @@ export class TitleScene extends Phaser.Scene {
   private confirm(): void {
     const item = MENU_ITEMS[this.selectedIndex];
     if (!item.available) return;
-    // Editor doesn't need a palette — jump straight to the level picker.
-    if (item.destination === 'LevelPickerScene') {
-      this.scene.start('LevelPickerScene');
+    // Editor + multiplayer lobby skip the character select — they have their
+    // own entry flow (editor picks palette from its own UI; multiplayer uses
+    // the host's map/palette metadata).
+    if (item.destination === 'LevelPickerScene' ||
+        item.destination === 'LobbyBrowserScene') {
+      this.scene.start(item.destination);
       return;
     }
     this.scene.start('CharacterSelectScene', { destination: item.destination });
