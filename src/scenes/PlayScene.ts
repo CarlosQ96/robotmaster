@@ -38,7 +38,7 @@ import { NuclearMonkeyBoss } from '../entities/NuclearMonkeyBoss';
 import { MonkeyBall } from '../entities/MonkeyBall';
 import { Bullet } from '../entities/Bullet';
 import { ChargedBullet } from '../entities/ChargedBullet';
-import { loadTilemap, type LoadedLevel, type EnemyPlacement } from '../utils/TilemapLoader';
+import { loadTilemap, type LoadedLevel, type LevelData, type EnemyPlacement } from '../utils/TilemapLoader';
 import { cullOffscreen, killBlockedProjectiles } from '../utils/outOfView';
 import { attachChargeEmitter, attachSlideDust } from '../utils/fxSystem';
 import { getAudio } from '../audio/AudioManager';
@@ -106,21 +106,33 @@ export class PlayScene extends Phaser.Scene {
 
   constructor() { super({ key: 'PlayScene' }); }
 
-  init(data: { levelName?: string; paletteKey?: string } = {}): void {
-    this.levelName  = data.levelName  ?? 'gym';
-    this.paletteKey = data.paletteKey ?? DEFAULT_PALETTE.textureKey;
+  /** Pre-loaded LevelData handed over from EditorScene.  When present, we
+   *  bypass the fetch entirely — this avoids the race where Vite's static
+   *  middleware hasn't picked up the file the editor just wrote to disk. */
+  private preloadedData?: LevelData;
+
+  init(data: { levelName?: string; paletteKey?: string; levelData?: LevelData } = {}): void {
+    this.levelName     = data.levelName  ?? 'gym';
+    this.paletteKey    = data.paletteKey ?? DEFAULT_PALETTE.textureKey;
+    this.preloadedData = data.levelData;
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor(0x0d0f14);
 
-    // Always re-fetch the JSON — the editor may have saved since last load.
     const cacheKey = `play-${this.levelName}`;
     this.cache.json.remove(cacheKey);
 
-    // Phaser fires FILE_LOAD_ERROR when a file 404s AND still fires COMPLETE
-    // afterwards.  Without this flag, buildScene would run on a missing file
-    // and throw the confusing "not in cache" error on top of the real cause.
+    // Fast path: editor handed us the level data directly.  Seed the cache
+    // and build straight away — no HTTP roundtrip, no race with Vite.
+    if (this.preloadedData) {
+      this.cache.json.add(cacheKey, this.preloadedData);
+      this.buildScene(cacheKey);
+      return;
+    }
+
+    // Fallback: fetch the JSON from disk (direct PlayScene launch without
+    // going through the editor, e.g. from the level picker or tests).
     let loadErrored = false;
 
     this.load.json(cacheKey, `levels/${this.levelName}.json?t=${Date.now()}`);
@@ -132,9 +144,6 @@ export class PlayScene extends Phaser.Scene {
     });
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       if (loadErrored) return;
-      // Defence in depth: if COMPLETE fires but the cache was never populated
-      // (e.g. vite SPA-fallback returned HTML with a 200), surface a clear
-      // error instead of the cryptic "not in cache" from TilemapLoader.
       if (!this.cache.json.exists(cacheKey)) {
         this.showFatal(`Level '${this.levelName}' could not be parsed — is the file valid JSON?`);
         return;

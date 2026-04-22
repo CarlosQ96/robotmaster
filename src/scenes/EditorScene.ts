@@ -83,6 +83,7 @@ function makeBlankLevel(name: string): LevelData {
 }
 
 const PALETTE_WIDTH    = 232;
+const HINT_STRIP_H     = 18;
 const PALETTE_TILE_PX  = 48;
 const PALETTE_COLS     = 4;
 const PALETTE_GAP      = 4;
@@ -175,6 +176,16 @@ export class EditorScene extends Phaser.Scene {
   private tilesetLabel!: Phaser.GameObjects.Text;
 
   // Tiles palette
+  /** Hold-to-enter "mark solid" mode.  Z is used instead of SHIFT because
+   *  SHIFT + click on macOS / some browsers is hijacked for range-select or
+   *  doesn't propagate the modifier cleanly through Phaser's pointer layer.
+   *  Z is a dedicated key, tracked via native window listeners for 100%
+   *  reliability across input backends. */
+  private solidMarkHeld = false;
+  private solidKeyListener?: (e: KeyboardEvent) => void;
+  /** Sidebar badge shown while Z is held — tells the user they're in
+   *  "mark solid" mode.  Created lazily in buildTilesPalette. */
+  private solidModeBadge?: Phaser.GameObjects.Text;
   private paletteTiles:         Phaser.GameObjects.Image[]     = [];
   /** Red outline overlays — one per palette tile; visible iff the tile is in data.solidTiles. */
   private paletteSolidOverlays: Phaser.GameObjects.Rectangle[] = [];
@@ -332,11 +343,14 @@ export class EditorScene extends Phaser.Scene {
 
     const camMain = this.cameras.main;
     camMain.setBackgroundColor(0x0a0d14);
+    // Height is trimmed by HINT_STRIP_H so tiles never render beneath the
+    // bottom help bar.  Keep in sync with buildHud() — both reference the
+    // same constant via HINT_STRIP_H below.
     camMain.setViewport(
       PALETTE_WIDTH,
       0,
       DISPLAY.width - PALETTE_WIDTH,
-      DISPLAY.height,
+      DISPLAY.height - HINT_STRIP_H,
     );
     camMain.setBounds(0, 0, WORLD.width, WORLD.height);
     camMain.ignore(this.uiLayer);
@@ -476,6 +490,46 @@ export class EditorScene extends Phaser.Scene {
   private buildTilesPalette(): void {
     const totalTiles = this.countTilesetTiles();
     const scale = PALETTE_TILE_PX / this.tileWidth;
+
+    // Attach the Z-key tracker once.  Watches keydown/keyup on Z (lower or
+    // upper case) and updates the mode badge so the user always knows if
+    // they're in "mark solid" mode.
+    if (!this.solidKeyListener) {
+      this.solidKeyListener = (e: KeyboardEvent) => {
+        if (e.key !== 'z' && e.key !== 'Z') return;
+        const down = e.type === 'keydown';
+        if (this.solidMarkHeld === down) return;
+        this.solidMarkHeld = down;
+        this.updateSolidModeBadge();
+      };
+      window.addEventListener('keydown', this.solidKeyListener);
+      window.addEventListener('keyup',   this.solidKeyListener);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        if (this.solidKeyListener) {
+          window.removeEventListener('keydown', this.solidKeyListener);
+          window.removeEventListener('keyup',   this.solidKeyListener);
+          this.solidKeyListener = undefined;
+        }
+        this.solidMarkHeld = false;
+      });
+    }
+
+    // Sidebar badge that lights up while Z is held.
+    if (!this.solidModeBadge) {
+      this.solidModeBadge = this.add
+        .text(PALETTE_PAD_X, CONTENT_TOP - 20,
+          '■ MARK SOLID (Z) — CLICK TILES', {
+            fontFamily:  'monospace',
+            fontSize:    '10px',
+            color:       '#ffffff',
+            backgroundColor: '#ff3344',
+            padding:     { left: 4, right: 4, top: 2, bottom: 2 },
+          })
+        .setScrollFactor(0)
+        .setDepth(DEPTH_UI_HILITE)
+        .setVisible(false);
+    }
+
     for (let i = 0; i < totalTiles; i++) {
       const col = i % PALETTE_COLS;
       const row = Math.floor(i / PALETTE_COLS);
@@ -490,14 +544,10 @@ export class EditorScene extends Phaser.Scene {
         .setDepth(DEPTH_UI_CONTENT)
         .setInteractive({ useHandCursor: true });
       img.on('pointerdown', (p: Phaser.Input.Pointer) => {
-        // Shift+LMB on a palette tile toggles solidity — doesn't overload
-        // RMB (which is "delete" on the world canvas).  Plain LMB arms.
-        // `p.event` can be a MouseEvent or TouchEvent depending on input
-        // source; only MouseEvent/KeyboardEvent have shiftKey — guard it.
+        // Z-held + LMB toggles solidity; plain LMB arms the tile for painting.
         if (p.leftButtonDown()) {
-          const shift = (p.event as MouseEvent | undefined)?.shiftKey ?? false;
-          if (shift) this.toggleTileSolid(i);
-          else       this.armTile(i);
+          if (this.solidMarkHeld) this.toggleTileSolid(i);
+          else                    this.armTile(i);
         }
       });
       this.paletteTiles.push(img);
@@ -778,17 +828,17 @@ export class EditorScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(DEPTH_UI_CONTENT);
 
-    // Opaque hint bar — the old 9px text sat directly on the tilemap and was
-    // unreadable against bright tiles.  Dark strip + higher-contrast text.
-    const hintStripH = 18;
+    // Opaque hint bar — lives strictly below the main camera viewport so it
+    // never covers tiles.  Height must match HINT_STRIP_H (camera viewport
+    // is sized around it in buildScene()).
     this.add
       .rectangle(
         PALETTE_WIDTH,
-        DISPLAY.height - hintStripH,
+        DISPLAY.height - HINT_STRIP_H,
         DISPLAY.width - PALETTE_WIDTH,
-        hintStripH,
+        HINT_STRIP_H,
         0x0a1020,
-        0.92,
+        1,
       )
       .setOrigin(0, 0)
       .setStrokeStyle(1, 0x1a3355)
@@ -797,7 +847,7 @@ export class EditorScene extends Phaser.Scene {
 
     this.helpText = this.add
       .text(PALETTE_WIDTH + 8, DISPLAY.height - 4,
-        'T/Y/B MODE   LMB PLACE   RMB DELETE   SHIFT+LMB PALETTE=SOLID   ARROWS PAN   [ ] CYCLE   G GRID   S SAVE   R PLAY   E LOAD', {
+        'T/Y/B MODE   LMB PLACE   RMB DELETE   HOLD Z + LMB PALETTE=SOLID   ARROWS PAN   [ ] CYCLE   G GRID   S SAVE   R PLAY   E LOAD', {
         fontFamily: 'monospace',
         fontSize:   '11px',
         color:      '#88aacc',
@@ -884,7 +934,7 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
 
-    if (this.isOverSidebar(pointer) || this.isOverAttrPanel(pointer)) {
+    if (this.isOverSidebar(pointer) || this.isOverAttrPanel(pointer) || this.isOverHintStrip(pointer)) {
       this.setGhostsVisible(false, false, false);
       return;
     }
@@ -927,7 +977,7 @@ export class EditorScene extends Phaser.Scene {
       this.panScrollY = this.cameras.main.scrollY;
       return;
     }
-    if (this.isOverSidebar(pointer) || this.isOverAttrPanel(pointer)) return;
+    if (this.isOverSidebar(pointer) || this.isOverAttrPanel(pointer) || this.isOverHintStrip(pointer)) return;
 
     const { tx, ty, wx, wy } = this.worldCellAt(pointer);
     if (this.outOfBounds(tx, ty)) return;
@@ -996,6 +1046,7 @@ export class EditorScene extends Phaser.Scene {
     this.paletteHilite.setVisible(showTiles);
     for (const img of this.paletteTiles) img.setVisible(false); // applyPaletteScroll re-evaluates
     if (showTiles) this.applyPaletteScroll();
+    this.updateSolidModeBadge();
 
     // ENEMIES-mode objects
     const showEnemies = next === 'enemies';
@@ -1462,7 +1513,13 @@ export class EditorScene extends Phaser.Scene {
       await this.saveLevel();
       if (this.dirty) return;  // save failed — showStatus already reported
     }
-    this.scene.start('PlayScene', { levelName: this.levelName });
+    // Pass the in-memory LevelData straight to PlayScene so it doesn't have
+    // to re-fetch the file we just wrote (which occasionally loses the race
+    // against Vite's static middleware and yields an empty response).
+    this.scene.start('PlayScene', {
+      levelName: this.levelName,
+      levelData: this.level.data,
+    });
   }
 
   // ── Palette scroll (TILES mode) ─────────────────────────────────────────
@@ -1501,6 +1558,14 @@ export class EditorScene extends Phaser.Scene {
    * PlayScene load time, so toggling here is all that's needed for the
    * tile to block the player after a re-save.
    */
+  /** Show / hide the red "MARK SOLID" badge in the sidebar based on whether
+   *  Z is currently held.  Only visible in tiles mode. */
+  private updateSolidModeBadge(): void {
+    if (!this.solidModeBadge) return;
+    const show = this.solidMarkHeld && this.mode === 'tiles';
+    this.solidModeBadge.setVisible(show);
+  }
+
   private toggleTileSolid(index: number): void {
     try {
       const list = this.level.data.solidTiles ?? [];
@@ -1549,6 +1614,12 @@ export class EditorScene extends Phaser.Scene {
 
   private isOverAttrPanel(p: Phaser.Input.Pointer): boolean {
     return this.selected !== null && p.x > DISPLAY.width - ATTR_PANEL_W;
+  }
+
+  /** Bottom hint strip — clicks here map to tiles outside the camera
+   *  viewport, so we filter them out the same way we filter sidebar clicks. */
+  private isOverHintStrip(p: Phaser.Input.Pointer): boolean {
+    return p.y >= DISPLAY.height - HINT_STRIP_H;
   }
 
   private countTilesetTiles(): number {
