@@ -55,6 +55,7 @@ export class CannonBall extends Phaser.Physics.Arcade.Sprite {
   fire(x: number, y: number, vx: number, vy: number): void {
     this.setActive(true).setVisible(true);
     this.setAlpha(1);
+    this.setRotation(0);
     this.hasLanded = false;
     this.landedMs  = 0;
 
@@ -62,6 +63,7 @@ export class CannonBall extends Phaser.Physics.Arcade.Sprite {
     b.enable = true;
     b.reset(x, y);
     b.setAllowGravity(true);
+    b.setDragX(0); // no drag while airborne — gravity shapes the arc
     b.setVelocity(vx, vy);
   }
 
@@ -74,9 +76,30 @@ export class CannonBall extends Phaser.Physics.Arcade.Sprite {
   update(delta: number): void {
     if (!this.active) return;
 
-    if (!this.hasLanded && this.arcadeBody.blocked.down) {
+    const b = this.arcadeBody;
+
+    // Roll: angular velocity = vx / radius.  Source sprite is 16×16 so the
+    // world radius is 8 × displayScale.  Kept active for the whole life so
+    // the ball keeps spinning mid-air and winds down with the drag on landing.
+    const radius = 8 * CANNON_BALL.scale;
+    if (radius > 0) {
+      this.rotation += (b.velocity.x / radius) * (delta / 1000);
+    }
+
+    if (!this.hasLanded && b.blocked.down) {
       this.hasLanded = true;
       this.landedMs  = 0;
+      // Kick in drag so the ball's forward roll eases to a stop.  Phaser
+      // Arcade drag uses `allowDrag` implicitly via setDragX.
+      b.setDragX(CANNON_BALL.landedDragX);
+    }
+
+    if (this.hasLanded) {
+      // Once drag has bled the horizontal speed down below a threshold,
+      // nail it to zero so the ball doesn't creep.
+      if (b.blocked.down && Math.abs(b.velocity.x) < 6) {
+        b.setVelocityX(0);
+      }
     }
 
     if (!this.hasLanded) return;
@@ -101,8 +124,10 @@ export class CannonBall extends Phaser.Physics.Arcade.Sprite {
     if (!this.active) return;
     this.setActive(false).setVisible(false);
     this.setAlpha(1);
+    this.setRotation(0);
     const b = this.arcadeBody;
     b.setVelocity(0, 0);
+    b.setDragX(0);
     b.enable = false;
     b.reset(POOL_PARK, POOL_PARK);
   }

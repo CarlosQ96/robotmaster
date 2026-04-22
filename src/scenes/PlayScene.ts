@@ -117,12 +117,29 @@ export class PlayScene extends Phaser.Scene {
     // Always re-fetch the JSON — the editor may have saved since last load.
     const cacheKey = `play-${this.levelName}`;
     this.cache.json.remove(cacheKey);
+
+    // Phaser fires FILE_LOAD_ERROR when a file 404s AND still fires COMPLETE
+    // afterwards.  Without this flag, buildScene would run on a missing file
+    // and throw the confusing "not in cache" error on top of the real cause.
+    let loadErrored = false;
+
     this.load.json(cacheKey, `levels/${this.levelName}.json?t=${Date.now()}`);
-    this.load.once(Phaser.Loader.Events.COMPLETE, () => this.buildScene(cacheKey));
     this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
       if (file.key === cacheKey) {
-        this.showFatal(`Level not found: ${this.levelName}`);
+        loadErrored = true;
+        this.showFatal(`Failed to load level '${this.levelName}' — file missing or invalid JSON.`);
       }
+    });
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      if (loadErrored) return;
+      // Defence in depth: if COMPLETE fires but the cache was never populated
+      // (e.g. vite SPA-fallback returned HTML with a 200), surface a clear
+      // error instead of the cryptic "not in cache" from TilemapLoader.
+      if (!this.cache.json.exists(cacheKey)) {
+        this.showFatal(`Level '${this.levelName}' could not be parsed — is the file valid JSON?`);
+        return;
+      }
+      this.buildScene(cacheKey);
     });
     this.load.start();
   }

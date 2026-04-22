@@ -60,6 +60,7 @@ export type PlayerState =
   | 'crouch'
   | 'slide'
   | 'climb'
+  | 'climb_to_idle'
   | 'hurt'
   | 'dead';
 
@@ -68,22 +69,23 @@ const LOW_STATES = new Set<PlayerState>(['crouch', 'slide']);
 
 /**
  * PlayerState → registered animation key.  Most states share a name with
- * their animation; 'hurt', 'dead', and 'climb' map to different assets
- * (climb reuses IDLE until a dedicated climb anim exists).
+ * their animation; 'hurt', 'dead', and climb transitions map to their own
+ * dedicated anim keys.
  */
 const STATE_ANIM: Record<PlayerState, string> = {
-  idle:       ANIM_KEY.IDLE,
-  run:        ANIM_KEY.RUN,
-  jump:       ANIM_KEY.JUMP,
-  fall:       ANIM_KEY.FALL,
-  shoot:      ANIM_KEY.SHOOT,
-  shoot_run:  ANIM_KEY.SHOOT_RUN,
-  jump_shoot: ANIM_KEY.JUMP_SHOOT,
-  crouch:     ANIM_KEY.CROUCH,
-  slide:      ANIM_KEY.SLIDE,
-  climb:      ANIM_KEY.IDLE,
-  hurt:       ANIM_KEY.TAKE_DAMAGE,
-  dead:       ANIM_KEY.DEATH,
+  idle:          ANIM_KEY.IDLE,
+  run:           ANIM_KEY.RUN,
+  jump:          ANIM_KEY.JUMP,
+  fall:          ANIM_KEY.FALL,
+  shoot:         ANIM_KEY.SHOOT,
+  shoot_run:     ANIM_KEY.SHOOT_RUN,
+  jump_shoot:    ANIM_KEY.JUMP_SHOOT,
+  crouch:        ANIM_KEY.CROUCH,
+  slide:         ANIM_KEY.SLIDE,
+  climb:         ANIM_KEY.CLIMB,
+  climb_to_idle: ANIM_KEY.CLIMB_TO_IDLE,
+  hurt:          ANIM_KEY.TAKE_DAMAGE,
+  dead:          ANIM_KEY.DEATH,
 };
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
@@ -92,6 +94,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private shootKey!: Phaser.Input.Keyboard.Key;
   private slideKey!: Phaser.Input.Keyboard.Key;
+  private jumpKey!:  Phaser.Input.Keyboard.Key;
 
   // ── Shoot cooldown ────────────────────────────────────────────────────────
   /**
@@ -131,13 +134,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // ── Ladder ────────────────────────────────────────────────────────────────
   private ladderLayer?: Phaser.Tilemaps.TilemapLayer;
   private ladderTileIndices: number[] = [];
-  /**
-   * Gate for jump-off the ladder.  On climb entry this starts `false` so the
-   * same up-press that grabbed the ladder doesn't immediately fling the
-   * player off it.  Once the player releases UP, the gate opens and the
-   * next up-press exits the climb with a short hop.
-   */
-  private climbCanJump = false;
 
   // ── Health / damage ──────────────────────────────────────────────────────
   private _health: number = PLAYER.maxHealth;
@@ -183,6 +179,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.cursors  = scene.input.keyboard!.createCursorKeys();
     this.shootKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.slideKey = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X);
+    // SPACE = jump (UP is reserved for climbing up ladders).
+    this.jumpKey  = scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.buildAnims(scene, textureKey);
     this.setupAnimListeners();
@@ -279,6 +277,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       Phaser.Animations.Events.ANIMATION_START,
       (anim: Phaser.Animations.Animation) => {
         if (anim.key === ANIM_KEY.JUMP_SHOOT) this.emitSmallShot();
+      },
+    );
+
+    // climb_to_idle done → step onto the surface (or fall if there's none).
+    this.on(
+      `${Phaser.Animations.Events.ANIMATION_COMPLETE_KEY}${ANIM_KEY.CLIMB_TO_IDLE}`,
+      () => {
+        if (this.playerState !== 'climb_to_idle') return;
+        this.transition(this.arcadeBody.blocked.down ? 'idle' : 'fall');
       },
     );
 
@@ -503,16 +510,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const wasLow  = LOW_STATES.has(this.playerState);
     const willLow = LOW_STATES.has(next);
-    const wasClimbing = this.playerState === 'climb';
+    const wasClimbing = this.playerState === 'climb' || this.playerState === 'climb_to_idle';
+    const willClimb   = next === 'climb' || next === 'climb_to_idle';
 
     this.playerState = next;
     this.play(STATE_ANIM[next], true);
 
-    // Gravity ownership: climb turns it off; everything else leaves it on.
-    // Exit paths (hurt / dead / respawn / walk-off-top) all route through
-    // transition(), so this single rule keeps the body's gravity flag sane.
-    if (next === 'climb') {
+    // Gravity ownership: the climb + climb_to_idle pair own "gravity off"
+    // (the player is still mounted on the ladder through the stepping-out
+    // anim).  Everything else runs with gravity on, including hurt / dead.
+    if (willClimb) {
       this.arcadeBody.setAllowGravity(false);
+      if (next === 'climb_to_idle') this.arcadeBody.setVelocity(0, 0);
     } else if (wasClimbing) {
       this.arcadeBody.setAllowGravity(true);
       this.anims.resume();
@@ -565,7 +574,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const goRight = this.cursors.right.isDown;
     const goDown  = this.cursors.down.isDown;
 
-    const jumpPressed   = Phaser.Input.Keyboard.JustDown(this.cursors.up);
+    const goUp          = this.cursors.up.isDown;
+    const jumpPressed   = Phaser.Input.Keyboard.JustDown(this.jumpKey);
     const shootHeld     = this.shootKey.isDown;
     const shootReleased = Phaser.Input.Keyboard.JustUp(this.shootKey);
     const slideTapped   = Phaser.Input.Keyboard.JustDown(this.slideKey);
@@ -613,48 +623,53 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (
       this.playerState !== 'climb' &&
+      this.playerState !== 'climb_to_idle' &&
       !climbBlocked &&
-      (jumpPressed || goDown) &&
+      (goUp || goDown) &&
       this.isOnLadder()
     ) {
       body.setVelocity(0, 0);
       this.snapToLadderColumn();
       this.transition('climb');
-      // Swallow the up-press so the same frame doesn't eject via jump-off.
-      this.climbCanJump = false;
     }
 
     if (this.playerState === 'climb') {
-      // Jump-off gate: the initial up-press that grabs the ladder must not
-      // immediately fling the player off.  Open the gate once up has been
-      // released mid-climb; after that, the next up-press exits with a hop.
-      if (!this.cursors.up.isDown) this.climbCanJump = true;
-
-      // Exit: jump off the ladder with a short hop.
-      if (jumpPressed && this.climbCanJump) {
+      // Exit: SPACE hops off the ladder.  (Jump key is decoupled from UP
+      // so there's no grab/jump-off ambiguity — no gate needed.)
+      if (jumpPressed) {
         body.setVelocityY(PLAYER.jumpVelocity * 0.6);
         getAudio(this.scene).playSfx('jump');
         this.transition('jump');
         return;
       }
 
-      // Exit: player climbed off the top (center no longer over a ladder).
+      // Exit: player stepped off the top.  We go through a brief
+      // climb_to_idle pose (frame 19) to sell the "pulling yourself up"
+      // moment; the anim-complete listener routes to idle / fall.
       if (!this.isOnLadder()) {
-        this.transition(body.blocked.down ? 'idle' : 'fall');
+        this.transition('climb_to_idle');
         return;
       }
 
       // Climb motion — vy from up/down, horizontal locked.
       let climbVy = 0;
-      if (this.cursors.up.isDown)   climbVy = -PLAYER.climbSpeed;
+      if (goUp)                     climbVy = -PLAYER.climbSpeed;
       if (this.cursors.down.isDown) climbVy =  PLAYER.climbSpeed;
       body.setVelocityX(0);
       body.setVelocityY(climbVy);
 
-      // Pause/resume the idle anim so a stationary climb doesn't read as
-      // "just standing in the air" — while moving, let it breathe.
+      // Pause the climb cycle (17-18) while stationary so the player looks
+      // locked to the rung they're gripping; resume on motion.
       if (climbVy === 0) this.anims.pause();
       else               this.anims.resume();
+      return;
+    }
+
+    // CLIMB_TO_IDLE — brief one-shot (frame 19) played when leaving the
+    // ladder at the top.  The anim-complete listener transitions to idle
+    // or fall depending on ground state at that moment.
+    if (this.playerState === 'climb_to_idle') {
+      body.setVelocityX(0);
       return;
     }
 

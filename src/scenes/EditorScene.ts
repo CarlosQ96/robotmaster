@@ -61,8 +61,10 @@ const DEFAULT_LEVEL_NAME = 'gym';
 
 /** Blank-level template used when the picker requests `isNew: true`. */
 function makeBlankLevel(name: string): LevelData {
-  const widthTiles  = 60;
-  const heightTiles = 17;
+  // 120 × 34 at displayScale 1 → 1920 × 544 world (wider than the 960-px
+  // viewport for side-scrolling, taller than 540 so vertical headroom fits).
+  const widthTiles  = 120;
+  const heightTiles = 34;
   const row = (): number[] => Array.from({ length: widthTiles }, () => -1);
   return {
     name,

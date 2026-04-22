@@ -489,6 +489,10 @@ export const CANNON_BALL = {
   /** Bounce coefficient on ground contact.  0 = thud, 0.3 = slight bounce. */
   bounce: 0.25,
 
+  /** Horizontal drag (px/s²) applied once the ball touches the ground so it
+   *  rolls a short distance then settles instead of skating forever. */
+  landedDragX: 420,
+
   /** ms after landing before the fade-out blink starts. */
   landedStaticMs: 1500,
   /** ms the blink runs before the ball vanishes. */
